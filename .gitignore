@@ -1,0 +1,229 @@
+# SwiftMockGenerator .gitignore
+
+# ===================================
+# Swift Package Manager
+# ===================================
+.build/
+Packages/
+Package.resolved
+*.xcodeproj
+.swiftpm/
+
+# ===================================
+# Generated Mocks (Examples)
+# ===================================
+Examples/Mocks/
+TestOutput/
+MockOutput/
+
+# ===================================
+# Xcode
+# ===================================
+## User settings
+xcuserdata/
+
+## Compatibility with Xcode 8 and earlier (ignoring not required starting Xcode 9)
+*.xcscmblueprint
+*.xccheckout
+
+## Compatibility with Xcode 3 and earlier (ignoring not required starting Xcode 4)
+build/
+DerivedData/
+*.moved-aside
+*.pbxuser
+!default.pbxuser
+*.mode1v3
+!default.mode1v3
+*.mode2v3
+!default.mode2v3
+*.perspectivev3
+!default.perspectivev3
+
+## Xcode Patch
+*.xcodeproj/*
+!*.xcodeproj/project.pbxproj
+!*.xcodeproj/xcshareddata/
+!*.xcodeproj/project.xcworkspace/
+*.xcodeproj/project.xcworkspace/xcuserdata/
+
+# ===================================
+# Swift Intermediate Files
+# ===================================
+*.dSYM/
+*.dSYM.zip
+*.ipa
+*.app
+
+# ===================================
+# macOS
+# ===================================
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Icon must end with two \r
+Icon
+
+# Thumbnails
+._*
+
+# Files that might appear in the root of a volume
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# Directories potentially created on remote AFP share
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# ===================================
+# Linux
+# ===================================
+*~
+
+# temporary files which can be created if a process still has a handle open of a deleted file
+.fuse_hidden*
+
+# KDE directory preferences
+.directory
+
+# Linux trash folder which might appear on any partition or disk
+.Trash-*
+
+# .nfs files are created when an open file is removed but is still being accessed
+.nfs*
+
+# ===================================
+# Windows (for cross-platform development)
+# ===================================
+# Windows thumbnail cache files
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+
+# Dump file
+*.stackdump
+
+# Folder config file
+[Dd]esktop.ini
+
+# Recycle Bin used on file shares
+$RECYCLE.BIN/
+
+# Windows Installer files
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+
+# Windows shortcuts
+*.lnk
+
+# ===================================
+# IDE Files
+# ===================================
+# Visual Studio Code
+.vscode/
+*.code-workspace
+
+# JetBrains IDEs
+.idea/
+*.swp
+*.swo
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+
+# Vim
+*.tmp
+*.swp
+*.swo
+.vimrc.local
+
+# ===================================
+# Development & Testing
+# ===================================
+# Test artifacts
+.test_results/
+test_output/
+
+# Coverage reports
+*.lcov
+.coverage
+coverage.xml
+
+# Profiling data
+*.trace
+
+# Log files
+*.log
+
+# Temporary directories
+tmp/
+temp/
+.tmp/
+
+# ===================================
+# Documentation
+# ===================================
+# Generated documentation
+docs/generated/
+*.docset/
+
+# ===================================
+# Environment & Configuration
+# ===================================
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Configuration files with sensitive data
+config.local.*
+secrets.*
+
+# ===================================
+# Backup files
+# ===================================
+*.backup
+*.bak
+*.orig
+
+# ===================================
+# Archive files
+# ===================================
+*.zip
+*.tar.gz
+*.tgz
+*.rar
+*.7z
+
+# ===================================
+# Project-specific
+# ===================================
+# Build artifacts from swift build
+.build/
+.swiftpm/
+Package.resolved
+
+# Swift executable
+swift-mock-generator
+
+# Demo output (optional, uncomment if you don't want to track demo results)
+# demo_output/
