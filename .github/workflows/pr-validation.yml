@@ -1,0 +1,82 @@
+name: PR Validation
+
+on:
+  pull_request:
+    branches: [develop]
+
+jobs:
+  test:
+    name: Test on ${{ matrix.os }} with Xcode ${{ matrix.xcode }}
+    runs-on: ${{ matrix.os }}
+    
+    strategy:
+      matrix:
+        include:
+          # Latest stable versions
+          - os: macos-14
+            xcode: '15.4'
+            swift: '5.10'
+          - os: macos-14
+            xcode: '15.3'
+            swift: '5.10'
+          # Previous stable versions for compatibility
+          - os: macos-13
+            xcode: '15.2'
+            swift: '5.9'
+          - os: macos-13
+            xcode: '15.1'
+            swift: '5.9'
+      
+      fail-fast: false
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Select Xcode version
+        run: sudo xcode-select -s /Applications/Xcode_${{ matrix.xcode }}.app/Contents/Developer
+        
+      - name: Show Xcode and Swift versions
+        run: |
+          xcodebuild -version
+          swift --version
+          
+      - name: Cache Swift Package Manager
+        uses: actions/cache@v4
+        with:
+          path: |
+            .build
+            ~/Library/Caches/org.swift.swiftpm
+          key: ${{ runner.os }}-spm-${{ hashFiles('Package.resolved') }}
+          restore-keys: |
+            ${{ runner.os }}-spm-
+            
+      - name: Resolve dependencies
+        run: swift package resolve
+        
+      - name: Build project
+        run: swift build --configuration release
+        
+      - name: Run tests
+        run: swift test --configuration release --parallel
+        
+      - name: Build executable
+        run: swift build --configuration release --product swift-mock-generator
+        
+      - name: Test executable functionality
+        run: |
+          # Build the executable and test basic functionality
+          .build/release/swift-mock-generator --help
+          
+          # Test with example files if they exist
+          if [ -f "Examples/Sources/DataRepository.swift" ]; then
+            echo "Testing with example files..."
+            .build/release/swift-mock-generator Examples/Sources/DataRepository.swift --output /tmp/test_output.swift
+            if [ -f "/tmp/test_output.swift" ]; then
+              echo "✅ Mock generation successful"
+              head -20 /tmp/test_output.swift
+            else
+              echo "❌ Mock generation failed"
+              exit 1
+            fi
+          fi
