@@ -86,9 +86,11 @@ coverage:
 	@echo "$(GREEN)📊 Running tests with coverage analysis...$(NC)"
 	swift test --enable-code-coverage
 	@echo "$(GREEN)📈 Generating coverage report...$(NC)"
-	@if [ -f ".build/arm64-apple-macosx/debug/SwiftMockGeneratorPackageTests.xctest/Contents/MacOS/SwiftMockGeneratorPackageTests" ]; then \
-		xcrun llvm-cov report .build/arm64-apple-macosx/debug/SwiftMockGeneratorPackageTests.xctest/Contents/MacOS/SwiftMockGeneratorPackageTests \
-			-instr-profile=.build/arm64-apple-macosx/debug/codecov/default.profdata \
+	@ARCH_DIR=$$(find .build -name "SwiftMockGeneratorPackageTests.xctest" -type d | head -1 | sed 's|/SwiftMockGeneratorPackageTests.xctest||'); \
+	if [ -n "$$ARCH_DIR" ] && [ -f "$$ARCH_DIR/SwiftMockGeneratorPackageTests.xctest/Contents/MacOS/SwiftMockGeneratorPackageTests" ]; then \
+		echo "$(GREEN)🔍 Using build directory: $$ARCH_DIR$(NC)"; \
+		xcrun llvm-cov report "$$ARCH_DIR/SwiftMockGeneratorPackageTests.xctest/Contents/MacOS/SwiftMockGeneratorPackageTests" \
+			-instr-profile="$$ARCH_DIR/codecov/default.profdata" \
 			Sources/ Tests/ 2>/dev/null || echo "$(YELLOW)⚠️  Coverage report generation failed$(NC)"; \
 	else \
 		echo "$(YELLOW)⚠️  Test executable not found for coverage report$(NC)"; \
