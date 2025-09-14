@@ -13,7 +13,7 @@ YELLOW = \033[0;33m
 RED = \033[0;31m
 NC = \033[0m # No Color
 
-.PHONY: help install uninstall test build clean coverage demo
+.PHONY: help build install uninstall test coverage clean demo
 
 # Default target
 help:
