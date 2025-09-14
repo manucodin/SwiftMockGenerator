@@ -12,12 +12,34 @@ A powerful Swift CLI tool that automatically generates mock objects (stubs, spie
 
 ## Installation
 
-### Build from Source
+### Quick Installation with Makefile (Recommended)
+
+```bash
+git clone git@github.com:manucodin/SwiftMockGenerator.git
+cd SwiftMockGenerator
+make install
+```
+
+This will build the project and install `swift-mock-generator` to `/usr/local/bin`.
+
+### Manual Build from Source
 
 ```bash
 git clone <your-repo>
 cd SwiftMockGenerator
 swift build -c release
+```
+
+### Makefile Commands
+
+```bash
+make help          # Show all available commands
+make install       # Build and install system-wide
+make uninstall     # Remove from system
+make test          # Run test suite
+make coverage      # Run tests with coverage report
+make demo          # See the tool in action with examples
+make clean         # Clean build artifacts
 ```
 
 ## Usage
