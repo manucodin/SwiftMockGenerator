@@ -71,12 +71,15 @@ jobs:
           # Test with example files if they exist
           if [ -f "Examples/Sources/DataRepository.swift" ]; then
             echo "Testing with example files..."
-            .build/release/swift-mock-generator Examples/Sources/DataRepository.swift --output /tmp/test_output.swift
-            if [ -f "/tmp/test_output.swift" ]; then
+            .build/release/swift-mock-generator --input Examples/Sources --output /tmp/test_output
+            if [ -d "/tmp/test_output" ] && [ "$(ls -A /tmp/test_output)" ]; then
               echo "✅ Mock generation successful"
-              head -20 /tmp/test_output.swift
+              echo "Generated files:"
+              ls -la /tmp/test_output
+              echo "Sample content from first generated file:"
+              head -20 /tmp/test_output/*.swift | head -20
             else
-              echo "❌ Mock generation failed"
+              echo "❌ Mock generation failed - no files generated"
               exit 1
             fi
           fi
