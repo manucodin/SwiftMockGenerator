@@ -77,7 +77,13 @@ jobs:
               echo "Generated files:"
               ls -la /tmp/test_output
               echo "Sample content from first generated file:"
-              head -20 /tmp/test_output/*.swift | head -20
+              first_file=$(ls /tmp/test_output/*.swift 2>/dev/null | head -1)
+              if [ -n "$first_file" ]; then
+                echo "Content from: $(basename "$first_file")"
+                head -20 "$first_file"
+              else
+                echo "No .swift files found in output directory"
+              fi
             else
               echo "❌ Mock generation failed - no files generated"
               exit 1
