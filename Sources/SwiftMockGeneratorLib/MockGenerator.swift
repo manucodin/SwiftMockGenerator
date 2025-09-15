@@ -108,7 +108,7 @@ public class MockGenerator {
         log("✏️ Generated \(annotation.type.rawValue) mock: \(outputFile)")
     }
     
-    private func createOutputFileName(for annotation: MockAnnotation, originalFile: String) -> String {
+    internal func createOutputFileName(for annotation: MockAnnotation, originalFile: String) -> String {
         let originalFileName = (originalFile as NSString).lastPathComponent
         let nameWithoutExtension = (originalFileName as NSString).deletingPathExtension
         return "\(nameWithoutExtension)\(annotation.type.rawValue).swift"
