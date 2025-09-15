@@ -19,11 +19,19 @@ public class SyntaxParser {
 public class AnnotationVisitor: SyntaxVisitor {
     private let filePath: String
     private let sourceLines: [String]
+    private let sourceText: String
+    private let sourceLocationConverter: SourceLocationConverter
     private(set) var annotations: [MockAnnotation] = []
     
     public init(filePath: String, sourceText: String) {
         self.filePath = filePath
+        self.sourceText = sourceText
         self.sourceLines = sourceText.components(separatedBy: .newlines)
+        
+        // Create source file for accurate line/column conversion
+        let sourceFile = SwiftParser.Parser.parse(source: sourceText)
+        self.sourceLocationConverter = SourceLocationConverter(fileName: filePath, tree: sourceFile)
+        
         super.init(viewMode: .sourceAccurate)
     }
     
@@ -94,31 +102,51 @@ public class AnnotationVisitor: SyntaxVisitor {
     // MARK: - Private Parsing Methods
     
     private func extractAnnotation(for node: SyntaxProtocol) -> (type: MockType, options: [String: String])? {
-        // Simple approach: check a few lines above the node for annotation
-        // In a real implementation, we might want to use trivia or more sophisticated parsing
-        let currentLine = getCurrentLine(for: node)
+        // Get accurate line number using SourceLocationConverter
+        let location = sourceLocationConverter.location(for: node.position)
+        let currentLine = location.line
         
-        // Look for annotation in the preceding lines (typically 1-3 lines above)
-        for i in stride(from: max(0, currentLine - 3), to: currentLine, by: 1) {
-            if i < sourceLines.count, let annotation = parseAnnotationComment(sourceLines[i]) {
-                return annotation
+        // Look for annotation in the preceding lines (up to 10 lines above to handle file headers)
+        let searchStartLine = max(1, currentLine - 10)
+        for lineNumber in stride(from: currentLine - 1, through: searchStartLine, by: -1) {
+            let arrayIndex = lineNumber - 1 // Convert to 0-based array index
+            if arrayIndex >= 0 && arrayIndex < sourceLines.count {
+                let line = sourceLines[arrayIndex]
+                if let annotation = parseAnnotationComment(line) {
+                    return annotation
+                }
+                
+                // If we encounter a non-empty line that's not a comment or annotation,
+                // stop searching (this prevents finding annotations from previous elements)
+                let trimmedLine = line.trimmingCharacters(in: .whitespaces)
+                if !trimmedLine.isEmpty && !trimmedLine.hasPrefix("//") && !trimmedLine.hasPrefix("/*") {
+                    break
+                }
             }
         }
         
         return nil
     }
     
-    private func getCurrentLine(for node: SyntaxProtocol) -> Int {
-        // Simple approximation - in a real implementation you'd use the converter
-        return Int(node.position.utf8Offset / 50) // Very rough estimate
-    }
-    
     private func parseAnnotationComment(_ line: String) -> (type: MockType, options: [String: String])? {
         let trimmedLine = line.trimmingCharacters(in: .whitespaces)
         
+        // Handle both single-line and multi-line comment formats
+        var commentContent = ""
+        if trimmedLine.hasPrefix("//") {
+            commentContent = String(trimmedLine.dropFirst(2)).trimmingCharacters(in: .whitespaces)
+        } else if trimmedLine.hasPrefix("/*") && trimmedLine.hasSuffix("*/") {
+            let withoutPrefix = String(trimmedLine.dropFirst(2))
+            commentContent = String(withoutPrefix.dropLast(2)).trimmingCharacters(in: .whitespaces)
+        } else {
+            return nil
+        }
+        
+        // Check for mock type annotations
         for mockType in MockType.allCases {
-            if trimmedLine.hasPrefix(mockType.commentPrefix) {
-                let optionsString = String(trimmedLine.dropFirst(mockType.commentPrefix.count))
+            let annotationPattern = "@\(mockType.rawValue)"
+            if commentContent.hasPrefix(annotationPattern) {
+                let optionsString = String(commentContent.dropFirst(annotationPattern.count))
                 let options = parseAnnotationOptions(optionsString)
                 return (type: mockType, options: options)
             }
@@ -150,8 +178,8 @@ public class AnnotationVisitor: SyntaxVisitor {
     }
     
     private func createSourceLocation(for node: SyntaxProtocol) -> SourceLocation {
-        // Simple implementation - in practice you'd use SourceLocationConverter
-        return SourceLocation(line: 1, column: 1, file: filePath)
+        let location = sourceLocationConverter.location(for: node.position)
+        return SourceLocation(line: location.line, column: location.column, file: filePath)
     }
     
     // MARK: - Element Parsing (Simplified)
