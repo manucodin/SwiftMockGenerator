@@ -186,7 +186,6 @@ public class AnnotationVisitor: SyntaxVisitor {
         // Parse protocol members
         var methods: [MethodElement] = []
         var properties: [PropertyElement] = []
-        var associatedTypes: [AssociatedTypeElement] = []
         
         let members = node.memberBlock.members
         for member in members {
@@ -196,9 +195,6 @@ public class AnnotationVisitor: SyntaxVisitor {
             } else if let varDecl = member.decl.as(VariableDeclSyntax.self) {
                 let parsedProperties = parsePropertyElements(from: varDecl)
                 properties.append(contentsOf: parsedProperties)
-            } else if let associatedTypeDecl = member.decl.as(AssociatedTypeDeclSyntax.self) {
-                let associatedType = parseAssociatedTypeElement(from: associatedTypeDecl)
-                associatedTypes.append(associatedType)
             }
         }
         
@@ -206,7 +202,6 @@ public class AnnotationVisitor: SyntaxVisitor {
             name: name,
             methods: methods,
             properties: properties,
-            associatedTypes: associatedTypes,
             inheritance: inheritance,
             accessLevel: accessLevel,
             genericParameters: genericParameters
@@ -389,25 +384,7 @@ public class AnnotationVisitor: SyntaxVisitor {
         )
     }
     
-    private func parseAssociatedTypeElement(from node: AssociatedTypeDeclSyntax) -> AssociatedTypeElement {
-        let name = node.name.text
-        let constraint = node.inheritanceClause?.inheritedTypes.first?.type.description.trimmingCharacters(in: .whitespaces)
-        let defaultType = node.initializer?.value.description.trimmingCharacters(in: .whitespaces)
-        
-        return AssociatedTypeElement(
-            name: name,
-            constraint: constraint,
-            defaultType: defaultType
-        )
-    }
     
-    private func parseGenericParameterClause(_ clause: GenericParameterClauseSyntax?) -> [String] {
-        guard let clause = clause else { return [] }
-        
-        return clause.parameters.map { parameter in
-            parameter.name.text
-        }
-    }
     
     private func extractTypeFromBinding(_ binding: PatternBindingSyntax) -> String {
         if let typeAnnotation = binding.typeAnnotation {

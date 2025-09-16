@@ -8,10 +8,6 @@ public enum MockType: String, CaseIterable {
     case stub = "Stub"
     case spy = "Spy"
     case dummy = "Dummy"
-    
-    var commentPrefix: String {
-        return "// @\(rawValue)"
-    }
 }
 
 /// Represents a mock annotation found in source code
@@ -74,18 +70,15 @@ public struct ProtocolElement {
     let name: String
     let methods: [MethodElement]
     let properties: [PropertyElement]
-    let associatedTypes: [AssociatedTypeElement]
     let inheritance: [String]
     let accessLevel: AccessLevel
     let genericParameters: [String]
     
-    public init(name: String, methods: [MethodElement] = [], properties: [PropertyElement] = [], 
-                associatedTypes: [AssociatedTypeElement] = [], inheritance: [String] = [], 
-                accessLevel: AccessLevel = .internal, genericParameters: [String] = []) {
+    public init(name: String, methods: [MethodElement] = [], properties: [PropertyElement] = [],
+                inheritance: [String] = [], accessLevel: AccessLevel = .internal, genericParameters: [String] = []) {
         self.name = name
         self.methods = methods
         self.properties = properties
-        self.associatedTypes = associatedTypes
         self.inheritance = inheritance
         self.accessLevel = accessLevel
         self.genericParameters = genericParameters
@@ -232,18 +225,6 @@ public struct InitializerElement {
     }
 }
 
-/// Associated type information
-public struct AssociatedTypeElement {
-    let name: String
-    let constraint: String?
-    let defaultType: String?
-    
-    public init(name: String, constraint: String? = nil, defaultType: String? = nil) {
-        self.name = name
-        self.constraint = constraint
-        self.defaultType = defaultType
-    }
-}
 
 /// Access level enumeration
 public enum AccessLevel: String, CaseIterable {

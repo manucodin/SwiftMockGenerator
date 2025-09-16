@@ -54,7 +54,6 @@ swift run swift-mock-generator --input ./Sources --output ./Tests/Mocks
 
 - `--input, -i`: Input directory containing Swift source files (default: ".")
 - `--output, -o`: Output directory for generated mock files (default: "./Mocks")
-- `--pattern`: File pattern to match Swift files (default: "*.swift")
 - `--verbose, -v`: Enable verbose logging
 - `--clean`: Clean output directory before generating mocks
 
