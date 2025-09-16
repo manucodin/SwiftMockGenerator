@@ -567,7 +567,7 @@ final class SimplifiedCoverageTests: XCTestCase {
         let sut = MockAnnotation(
             type: mockType,
             element: .protocol(element),
-            location: location,
+            location: location
         )
         
         // Then
