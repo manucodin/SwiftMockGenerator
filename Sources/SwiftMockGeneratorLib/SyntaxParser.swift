@@ -86,15 +86,19 @@ public class AnnotationVisitor: SyntaxVisitor {
     // MARK: - Function Declarations
     
     public override func visit(_ node: FunctionDeclSyntax) -> SyntaxVisitorContinueKind {
-        if let annotation = extractAnnotation(for: node) {
-            let functionElement = parseFunctionElement(from: node)
-            let mockAnnotation = MockAnnotation(
-                type: annotation.type,
-                element: .function(functionElement),
-                location: createSourceLocation(for: node),
-                options: annotation.options
-            )
-            annotations.append(mockAnnotation)
+        // Only process standalone functions (not those inside protocols/classes/structs)
+        // Functions inside protocols/classes/structs are handled by their respective parsers
+        if isStandaloneFunction(node) {
+            if let annotation = extractAnnotation(for: node) {
+                let functionElement = parseFunctionElement(from: node)
+                let mockAnnotation = MockAnnotation(
+                    type: annotation.type,
+                    element: .function(functionElement),
+                    location: createSourceLocation(for: node),
+                    options: annotation.options
+                )
+                annotations.append(mockAnnotation)
+            }
         }
         return .visitChildren
     }
@@ -102,16 +106,42 @@ public class AnnotationVisitor: SyntaxVisitor {
     // MARK: - Private Parsing Methods
     
     private func extractAnnotation(for node: SyntaxProtocol) -> (type: MockType, options: [String: String])? {
-        // Get accurate line number using SourceLocationConverter
-        let location = sourceLocationConverter.location(for: node.position)
-        let currentLine = location.line
+        // Get the declaration keyword to find the actual line
+        var searchText = ""
+        if let protocolDecl = node.as(ProtocolDeclSyntax.self) {
+            searchText = "protocol \(protocolDecl.name.text)"
+        } else if let classDecl = node.as(ClassDeclSyntax.self) {
+            searchText = "class \(classDecl.name.text)"
+        } else if let structDecl = node.as(StructDeclSyntax.self) {
+            searchText = "struct \(structDecl.name.text)"
+        } else if let funcDecl = node.as(FunctionDeclSyntax.self) {
+            searchText = "func \(funcDecl.name.text)"
+        }
+        
+        if searchText.isEmpty {
+            return nil
+        }
+        
+        // Find the line containing this declaration
+        var declarationLine = -1
+        for (index, line) in sourceLines.enumerated() {
+            if line.contains(searchText) {
+                declarationLine = index + 1 // Convert to 1-based
+                break
+            }
+        }
+        
+        if declarationLine == -1 {
+            return nil
+        }
         
         // Look for annotation in the preceding lines (up to 10 lines above to handle file headers)
-        let searchStartLine = max(1, currentLine - 10)
-        for lineNumber in stride(from: currentLine - 1, through: searchStartLine, by: -1) {
+        let searchStartLine = max(1, declarationLine - 10)
+        for lineNumber in stride(from: declarationLine - 1, through: searchStartLine, by: -1) {
             let arrayIndex = lineNumber - 1 // Convert to 0-based array index
             if arrayIndex >= 0 && arrayIndex < sourceLines.count {
                 let line = sourceLines[arrayIndex]
+                
                 if let annotation = parseAnnotationComment(line) {
                     return annotation
                 }
@@ -124,7 +154,6 @@ public class AnnotationVisitor: SyntaxVisitor {
                 }
             }
         }
-        
         return nil
     }
     
@@ -182,23 +211,41 @@ public class AnnotationVisitor: SyntaxVisitor {
         return SourceLocation(line: location.line, column: location.column, file: filePath)
     }
     
-    // MARK: - Element Parsing (Simplified)
+    // MARK: - Element Parsing (Full Implementation)
     
     private func parseProtocolElement(from node: ProtocolDeclSyntax) -> ProtocolElement {
         let name = node.name.text
         let accessLevel = parseAccessLevel(from: node.modifiers)
         let inheritance = parseInheritanceClause(node.inheritanceClause)
+        let genericParameters: [String] = [] // TODO: Parse generic parameters properly
         
-        // For now, return a simple protocol element
-        // In a full implementation, you'd parse all members
+        // Parse protocol members
+        var methods: [MethodElement] = []
+        var properties: [PropertyElement] = []
+        var associatedTypes: [AssociatedTypeElement] = []
+        
+        let members = node.memberBlock.members
+        for member in members {
+            if let functionDecl = member.decl.as(FunctionDeclSyntax.self) {
+                let method = parseMethodElement(from: functionDecl)
+                methods.append(method)
+            } else if let varDecl = member.decl.as(VariableDeclSyntax.self) {
+                let parsedProperties = parsePropertyElements(from: varDecl)
+                properties.append(contentsOf: parsedProperties)
+            } else if let associatedTypeDecl = member.decl.as(AssociatedTypeDeclSyntax.self) {
+                let associatedType = parseAssociatedTypeElement(from: associatedTypeDecl)
+                associatedTypes.append(associatedType)
+            }
+        }
+        
         return ProtocolElement(
             name: name,
-            methods: [],
-            properties: [],
-            associatedTypes: [],
+            methods: methods,
+            properties: properties,
+            associatedTypes: associatedTypes,
             inheritance: inheritance,
             accessLevel: accessLevel,
-            genericParameters: []
+            genericParameters: genericParameters
         )
     }
     
@@ -206,16 +253,37 @@ public class AnnotationVisitor: SyntaxVisitor {
         let name = node.name.text
         let accessLevel = parseAccessLevel(from: node.modifiers)
         let inheritance = parseInheritanceClause(node.inheritanceClause)
+        let genericParameters: [String] = [] // TODO: Parse generic parameters properly
+        let isFinal = node.modifiers.contains { $0.name.text == "final" }
+        
+        // Parse class members
+        var methods: [MethodElement] = []
+        var properties: [PropertyElement] = []
+        var initializers: [InitializerElement] = []
+        
+        let members = node.memberBlock.members
+        for member in members {
+            if let functionDecl = member.decl.as(FunctionDeclSyntax.self) {
+                let method = parseMethodElement(from: functionDecl)
+                methods.append(method)
+            } else if let varDecl = member.decl.as(VariableDeclSyntax.self) {
+                let parsedProperties = parsePropertyElements(from: varDecl)
+                properties.append(contentsOf: parsedProperties)
+            } else if let initDecl = member.decl.as(InitializerDeclSyntax.self) {
+                let initializer = parseInitializerElement(from: initDecl)
+                initializers.append(initializer)
+            }
+        }
         
         return ClassElement(
             name: name,
-            methods: [],
-            properties: [],
-            initializers: [],
+            methods: methods,
+            properties: properties,
+            initializers: initializers,
             inheritance: inheritance,
             accessLevel: accessLevel,
-            genericParameters: [],
-            isFinal: false
+            genericParameters: genericParameters,
+            isFinal: isFinal
         )
     }
     
@@ -223,15 +291,35 @@ public class AnnotationVisitor: SyntaxVisitor {
         let name = node.name.text
         let accessLevel = parseAccessLevel(from: node.modifiers)
         let inheritance = parseInheritanceClause(node.inheritanceClause)
+        let genericParameters: [String] = [] // TODO: Parse generic parameters properly
+        
+        // Parse struct members
+        var methods: [MethodElement] = []
+        var properties: [PropertyElement] = []
+        var initializers: [InitializerElement] = []
+        
+        let members = node.memberBlock.members
+        for member in members {
+            if let functionDecl = member.decl.as(FunctionDeclSyntax.self) {
+                let method = parseMethodElement(from: functionDecl)
+                methods.append(method)
+            } else if let varDecl = member.decl.as(VariableDeclSyntax.self) {
+                let parsedProperties = parsePropertyElements(from: varDecl)
+                properties.append(contentsOf: parsedProperties)
+            } else if let initDecl = member.decl.as(InitializerDeclSyntax.self) {
+                let initializer = parseInitializerElement(from: initDecl)
+                initializers.append(initializer)
+            }
+        }
         
         return StructElement(
             name: name,
-            methods: [],
-            properties: [],
-            initializers: [],
+            methods: methods,
+            properties: properties,
+            initializers: initializers,
             inheritance: inheritance,
             accessLevel: accessLevel,
-            genericParameters: []
+            genericParameters: genericParameters
         )
     }
     
@@ -240,16 +328,20 @@ public class AnnotationVisitor: SyntaxVisitor {
         let accessLevel = parseAccessLevel(from: node.modifiers)
         let parameters = parseParameterClause(node.signature.parameterClause)
         let returnType = parseReturnClause(node.signature.returnClause)
+        let isStatic = node.modifiers.contains { $0.name.text == "static" }
+        let isAsync = node.signature.effectSpecifiers?.asyncSpecifier != nil
+        let isThrowing = node.signature.effectSpecifiers?.throwsSpecifier != nil
+        let genericParameters: [String] = [] // TODO: Parse generic parameters properly
         
         return FunctionElement(
             name: name,
             parameters: parameters,
             returnType: returnType,
             accessLevel: accessLevel,
-            isStatic: false,
-            isAsync: false,
-            isThrowing: false,
-            genericParameters: []
+            isStatic: isStatic,
+            isAsync: isAsync,
+            isThrowing: isThrowing,
+            genericParameters: genericParameters
         )
     }
     
@@ -292,5 +384,153 @@ public class AnnotationVisitor: SyntaxVisitor {
     private func parseReturnClause(_ clause: ReturnClauseSyntax?) -> String? {
         guard let clause = clause else { return nil }
         return clause.type.description.trimmingCharacters(in: .whitespaces)
+    }
+    
+    // MARK: - Additional Parsing Methods
+    
+    private func parseMethodElement(from node: FunctionDeclSyntax) -> MethodElement {
+        let name = node.name.text
+        let accessLevel = parseAccessLevel(from: node.modifiers)
+        let parameters = parseParameterClause(node.signature.parameterClause)
+        let returnType = parseReturnClause(node.signature.returnClause)
+        let isStatic = node.modifiers.contains { $0.name.text == "static" }
+        let isAsync = node.signature.effectSpecifiers?.asyncSpecifier != nil
+        let isThrowing = node.signature.effectSpecifiers?.throwsSpecifier != nil
+        let isMutating = node.modifiers.contains { $0.name.text == "mutating" }
+        let genericParameters: [String] = [] // TODO: Parse generic parameters properly
+        
+        return MethodElement(
+            name: name,
+            parameters: parameters,
+            returnType: returnType,
+            accessLevel: accessLevel,
+            isStatic: isStatic,
+            isAsync: isAsync,
+            isThrowing: isThrowing,
+            isMutating: isMutating,
+            genericParameters: genericParameters
+        )
+    }
+    
+    private func parsePropertyElements(from node: VariableDeclSyntax) -> [PropertyElement] {
+        let accessLevel = parseAccessLevel(from: node.modifiers)
+        let isStatic = node.modifiers.contains { $0.name.text == "static" }
+        let isLazy = node.modifiers.contains { $0.name.text == "lazy" }
+        
+        var properties: [PropertyElement] = []
+        
+        for binding in node.bindings {
+            if let pattern = binding.pattern.as(IdentifierPatternSyntax.self) {
+                let name = pattern.identifier.text
+                let type = extractTypeFromBinding(binding)
+                let hasGetter = true // In protocols, properties always have at least a getter
+                let hasSetter = binding.accessorBlock?.accessors.as(AccessorDeclListSyntax.self)?.contains { 
+                    $0.accessorSpecifier.text == "set" 
+                } ?? !isComputedProperty(binding)
+                
+                let property = PropertyElement(
+                    name: name,
+                    type: type,
+                    accessLevel: accessLevel,
+                    isStatic: isStatic,
+                    hasGetter: hasGetter,
+                    hasSetter: hasSetter,
+                    isLazy: isLazy
+                )
+                properties.append(property)
+            }
+        }
+        
+        return properties
+    }
+    
+    private func parseInitializerElement(from node: InitializerDeclSyntax) -> InitializerElement {
+        let accessLevel = parseAccessLevel(from: node.modifiers)
+        let parameters = parseParameterClause(node.signature.parameterClause)
+        let isFailable = node.optionalMark != nil
+        let isConvenience = node.modifiers.contains { $0.name.text == "convenience" }
+        let isThrowing = node.signature.effectSpecifiers?.throwsSpecifier != nil
+        
+        return InitializerElement(
+            parameters: parameters,
+            accessLevel: accessLevel,
+            isFailable: isFailable,
+            isConvenience: isConvenience,
+            isThrowing: isThrowing
+        )
+    }
+    
+    private func parseAssociatedTypeElement(from node: AssociatedTypeDeclSyntax) -> AssociatedTypeElement {
+        let name = node.name.text
+        let constraint = node.inheritanceClause?.inheritedTypes.first?.type.description.trimmingCharacters(in: .whitespaces)
+        let defaultType = node.initializer?.value.description.trimmingCharacters(in: .whitespaces)
+        
+        return AssociatedTypeElement(
+            name: name,
+            constraint: constraint,
+            defaultType: defaultType
+        )
+    }
+    
+    private func parseGenericParameterClause(_ clause: GenericParameterClauseSyntax?) -> [String] {
+        guard let clause = clause else { return [] }
+        
+        return clause.parameters.map { parameter in
+            parameter.name.text
+        }
+    }
+    
+    private func extractTypeFromBinding(_ binding: PatternBindingSyntax) -> String {
+        if let typeAnnotation = binding.typeAnnotation {
+            return typeAnnotation.type.description.trimmingCharacters(in: .whitespaces)
+        } else if let initializer = binding.initializer {
+            // Try to infer type from initializer (simplified approach)
+            return inferTypeFromInitializer(initializer.value)
+        }
+        return "Any" // Fallback
+    }
+    
+    private func isComputedProperty(_ binding: PatternBindingSyntax) -> Bool {
+        guard let accessorBlock = binding.accessorBlock else { return false }
+        return accessorBlock.accessors.as(AccessorDeclListSyntax.self) != nil
+    }
+    
+    private func inferTypeFromInitializer(_ expr: ExprSyntax) -> String {
+        // Simplified type inference - in a real implementation, this would be more sophisticated
+        let exprString = expr.description.trimmingCharacters(in: .whitespaces)
+        
+        if exprString.hasPrefix("\"") && exprString.hasSuffix("\"") {
+            return "String"
+        } else if exprString == "true" || exprString == "false" {
+            return "Bool"
+        } else if Int(exprString) != nil {
+            return "Int"
+        } else if Double(exprString) != nil {
+            return "Double"
+        } else if exprString.hasPrefix("[") && exprString.hasSuffix("]") {
+            return "Array<Any>" // Simplified
+        } else if exprString.hasPrefix("[") && exprString.contains(":") && exprString.hasSuffix("]") {
+            return "Dictionary<String, Any>" // Simplified
+        }
+        
+        return "Any"
+    }
+    
+    private func isStandaloneFunction(_ node: FunctionDeclSyntax) -> Bool {
+        // Check if the function is inside a protocol, class, or struct
+        // by walking up the parent nodes
+        var currentNode: SyntaxProtocol? = node.parent
+        
+        while let parent = currentNode {
+            if parent.is(ProtocolDeclSyntax.self) ||
+               parent.is(ClassDeclSyntax.self) ||
+               parent.is(StructDeclSyntax.self) ||
+               parent.is(ExtensionDeclSyntax.self) {
+                return false
+            }
+            currentNode = parent.parent
+        }
+        
+        return true
     }
 }

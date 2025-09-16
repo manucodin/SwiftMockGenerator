@@ -89,6 +89,9 @@ public class MockGenerator {
     private func generateMock(for annotation: MockAnnotation, originalFile: String) async throws {
         let generator: MockGeneratorProtocol
         
+        // Debug logging
+        log("🔍 Processing annotation: \(annotation.type.rawValue) for element: \(annotation.element.name)")
+        
         switch annotation.type {
         case .stub:
             generator = stubGenerator
@@ -100,6 +103,9 @@ public class MockGenerator {
         
         let mockCode = try generator.generateMock(for: annotation.element, annotation: annotation)
         
+        // Debug logging
+        log("📝 Generated mock code length: \(mockCode.count) characters")
+        
         // Write to output file
         let outputFile = createOutputFileName(for: annotation, originalFile: originalFile)
         let outputFilePath = (outputPath as NSString).appendingPathComponent(outputFile)
@@ -109,9 +115,9 @@ public class MockGenerator {
     }
     
     internal func createOutputFileName(for annotation: MockAnnotation, originalFile: String) -> String {
-        let originalFileName = (originalFile as NSString).lastPathComponent
-        let nameWithoutExtension = (originalFileName as NSString).deletingPathExtension
-        return "\(nameWithoutExtension)\(annotation.type.rawValue).swift"
+        let elementName = annotation.element.name
+        let mockTypeSuffix = annotation.type.rawValue
+        return "\(elementName)\(mockTypeSuffix).swift"
     }
     
     private func log(_ message: String) {
