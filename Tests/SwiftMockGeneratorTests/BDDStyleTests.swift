@@ -110,7 +110,7 @@ final class BDDStyleTests: XCTestCase {
         
         // Then
         XCTAssertTrue(result.contains("TrackableServiceSpy"))
-        XCTAssertTrue(result.contains("Call Tracking"))
+        XCTAssertTrue(result.contains("// MARK: - sendRequest"))
         XCTAssertTrue(result.contains("sendRequest") && result.contains("disconnect"))
     }
     

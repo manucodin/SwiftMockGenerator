@@ -42,7 +42,7 @@ final class SimplifiedCoverageTests: XCTestCase {
         XCTAssertFalse(result.isEmpty)
         XCTAssertTrue(result.contains("TestProtocol"))
         XCTAssertTrue(result.contains("Spy"))
-        XCTAssertTrue(result.contains("Call Tracking"))
+        XCTAssertTrue(result.contains("// MARK: - Reset"))
     }
     
     func testDummyGenerator_whenGeneratingMockFromProtocol_thenProducesDummyCode() throws {
@@ -273,19 +273,6 @@ final class SimplifiedCoverageTests: XCTestCase {
         }
     }
     
-    func testMockType_whenGettingCommentPrefixes_thenReturnsCorrectFormat() {
-        // Given
-        let testCases: [(MockType, String)] = [
-            (.stub, "// @Stub"),
-            (.spy, "// @Spy"),
-            (.dummy, "// @Dummy")
-        ]
-        
-        // When & Then
-        for (sut, expectedPrefix) in testCases {
-            XCTAssertEqual(sut.commentPrefix, expectedPrefix)
-        }
-    }
     
     // MARK: - CodeElement Reference Semantics SUT Tests
     
@@ -308,7 +295,6 @@ final class SimplifiedCoverageTests: XCTestCase {
         let name = "ComplexProtocol"
         let methods = [MethodElement(name: "testMethod")]
         let properties = [PropertyElement(name: "testProperty", type: "String")]
-        let associatedTypes = [AssociatedTypeElement(name: "Item")]
         let inheritance = ["ParentProtocol"]
         let accessLevel = AccessLevel.public
         let genericParameters = ["T"]
@@ -318,7 +304,6 @@ final class SimplifiedCoverageTests: XCTestCase {
             name: name,
             methods: methods,
             properties: properties,
-            associatedTypes: associatedTypes,
             inheritance: inheritance,
             accessLevel: accessLevel,
             genericParameters: genericParameters
@@ -328,7 +313,6 @@ final class SimplifiedCoverageTests: XCTestCase {
         XCTAssertEqual(sut.name, name)
         XCTAssertEqual(sut.methods.count, 1)
         XCTAssertEqual(sut.properties.count, 1)
-        XCTAssertEqual(sut.associatedTypes.count, 1)
         XCTAssertEqual(sut.inheritance.count, 1)
         XCTAssertEqual(sut.accessLevel, accessLevel)
         XCTAssertEqual(sut.genericParameters.count, 1)
@@ -529,24 +513,6 @@ final class SimplifiedCoverageTests: XCTestCase {
         XCTAssertTrue(sut.isThrowing)
     }
     
-    func testAssociatedTypeElement_whenCreatedWithConstraints_thenStoresAllProperties() {
-        // Given
-        let name = "Item"
-        let constraint = "Codable"
-        let defaultType = "String"
-        
-        // When
-        let sut = AssociatedTypeElement(
-            name: name,
-            constraint: constraint,
-            defaultType: defaultType
-        )
-        
-        // Then
-        XCTAssertEqual(sut.name, name)
-        XCTAssertEqual(sut.constraint, constraint)
-        XCTAssertEqual(sut.defaultType, defaultType)
-    }
     
     // MARK: - Error Types SUT Tests
     

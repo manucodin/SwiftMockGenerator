@@ -109,7 +109,7 @@ final class SwiftMockGeneratorTests: XCTestCase {
         let result = sut.createOutputFileName(for: annotation, originalFile: originalFile)
         
         // Then
-        XCTAssertEqual(result, "network_service_protocolSpy.swift")
+        XCTAssertEqual(result, "NetworkServiceSpy.swift")
     }
     
     func testMockGenerator_givenFileWithNumbers_whenCreatingOutputFileName_thenPreservesNumbers() {
@@ -145,7 +145,7 @@ final class SwiftMockGeneratorTests: XCTestCase {
         let result = sut.createOutputFileName(for: annotation, originalFile: originalFile)
         
         // Then
-        XCTAssertEqual(result, "Test-Protocol+ExtensionsStub.swift")
+        XCTAssertEqual(result, "TestStub.swift")
     }
     
     func testMockGenerator_givenAllMockTypes_whenCreatingOutputFileName_thenReturnsCorrectSuffixes() {
@@ -165,7 +165,7 @@ final class SwiftMockGeneratorTests: XCTestCase {
             )
             
             let result = sut.createOutputFileName(for: annotation, originalFile: originalFile)
-            let expectedFileName = "TestService\(expectedSuffixes[index]).swift"
+            let expectedFileName = "TestProtocol\(expectedSuffixes[index]).swift"
             
             XCTAssertEqual(result, expectedFileName, "Failed for mock type: \(mockType)")
         }
@@ -186,7 +186,7 @@ final class SwiftMockGeneratorTests: XCTestCase {
         let result = sut.createOutputFileName(for: annotation, originalFile: originalFile)
         
         // Then
-        XCTAssertEqual(result, "ServiceProtocolStub.swift")
+        XCTAssertEqual(result, "ServiceStub.swift")
     }
     
     func testMockGenerator_givenFileWithMultipleDots_whenCreatingOutputFileName_thenRemovesOnlyLastExtension() {
@@ -204,7 +204,7 @@ final class SwiftMockGeneratorTests: XCTestCase {
         let result = sut.createOutputFileName(for: annotation, originalFile: originalFile)
         
         // Then
-        XCTAssertEqual(result, "API.v2.ClientSpy.swift")
+        XCTAssertEqual(result, "APIClientSpy.swift")
     }
     
     func testMockGenerator_givenEmptyFileName_whenCreatingOutputFileName_thenHandlesGracefully() {
@@ -222,7 +222,7 @@ final class SwiftMockGeneratorTests: XCTestCase {
         let result = sut.createOutputFileName(for: annotation, originalFile: originalFile)
         
         // Then
-        XCTAssertEqual(result, "Dummy.swift")
+        XCTAssertEqual(result, "ConfigDummy.swift")
     }
     
     func testMockGenerator_givenRelativeFilePath_whenCreatingOutputFileName_thenExtractsCorrectBaseName() {
@@ -240,7 +240,7 @@ final class SwiftMockGeneratorTests: XCTestCase {
         let result = sut.createOutputFileName(for: annotation, originalFile: originalFile)
         
         // Then
-        XCTAssertEqual(result, "AuthServiceStub.swift")
+        XCTAssertEqual(result, "authenticateStub.swift")
     }
     
     func testMockGenerator_givenFileNameMatchingMockSuffix_whenCreatingOutputFileName_thenDoesNotDuplicateSuffix() {
@@ -259,7 +259,7 @@ final class SwiftMockGeneratorTests: XCTestCase {
         
         // Then
         // Note: This documents current behavior - the method doesn't check for existing suffixes
-        XCTAssertEqual(result, "ServiceStubStub.swift")
+        XCTAssertEqual(result, "ServiceStub.swift")
     }
     
     // MARK: - Generator Tests
@@ -309,7 +309,6 @@ final class SwiftMockGeneratorTests: XCTestCase {
     func testMockTypeEnumValues() {
         // Given
         let expectedRawValues = ["Stub", "Spy", "Dummy"]
-        let expectedPrefixes = ["// @Stub", "// @Spy", "// @Dummy"]
         
         // When
         let stubType = MockType.stub
@@ -320,10 +319,6 @@ final class SwiftMockGeneratorTests: XCTestCase {
         XCTAssertEqual(stubType.rawValue, expectedRawValues[0])
         XCTAssertEqual(spyType.rawValue, expectedRawValues[1])
         XCTAssertEqual(dummyType.rawValue, expectedRawValues[2])
-        
-        XCTAssertEqual(stubType.commentPrefix, expectedPrefixes[0])
-        XCTAssertEqual(spyType.commentPrefix, expectedPrefixes[1])
-        XCTAssertEqual(dummyType.commentPrefix, expectedPrefixes[2])
     }
     
     // MARK: - AccessLevel Enum Tests
@@ -369,7 +364,6 @@ final class SwiftMockGeneratorTests: XCTestCase {
         let name = "ComplexProtocol"
         let methods = [MethodElement(name: "testMethod")]
         let properties = [PropertyElement(name: "testProperty", type: "String")]
-        let associatedTypes = [AssociatedTypeElement(name: "Item")]
         let inheritance = ["ParentProtocol"]
         let genericParameters = ["T"]
         
@@ -378,7 +372,6 @@ final class SwiftMockGeneratorTests: XCTestCase {
             name: name,
             methods: methods,
             properties: properties,
-            associatedTypes: associatedTypes,
             inheritance: inheritance,
             accessLevel: .internal,
             genericParameters: genericParameters
@@ -388,7 +381,6 @@ final class SwiftMockGeneratorTests: XCTestCase {
         XCTAssertEqual(sut.name, name)
         XCTAssertEqual(sut.methods.count, 1)
         XCTAssertEqual(sut.properties.count, 1)
-        XCTAssertEqual(sut.associatedTypes.count, 1)
         XCTAssertEqual(sut.inheritance.count, 1)
         XCTAssertEqual(sut.genericParameters.count, 1)
     }

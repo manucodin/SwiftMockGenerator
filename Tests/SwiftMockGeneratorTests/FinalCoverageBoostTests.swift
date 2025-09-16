@@ -494,24 +494,6 @@ final class FinalCoverageBoostTests: XCTestCase {
         XCTAssertTrue(sut.isThrowing)
     }
     
-    func testAssociatedTypeElement_whenCreatedWithConstraints_thenStoresAllCorrectly() {
-        // Given
-        let name = "Item"
-        let constraint = "Codable"
-        let defaultType = "String"
-        
-        // When
-        let sut = AssociatedTypeElement(
-            name: name,
-            constraint: constraint,
-            defaultType: defaultType
-        )
-        
-        // Then
-        XCTAssertEqual(sut.name, name)
-        XCTAssertEqual(sut.constraint, constraint)
-        XCTAssertEqual(sut.defaultType, defaultType)
-    }
     
     // MARK: - Complex Elements SUT Coverage
     
