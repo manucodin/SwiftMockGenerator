@@ -57,27 +57,6 @@ final class BDDStyleTests: XCTestCase {
         XCTAssertTrue(result.contains("BaseService"))
     }
     
-    func testStubGenerator_givenStructWithMethods_whenGeneratingStub_thenCreatesStructImplementation() throws {
-        // Given
-        let sut = StubGenerator()
-        let structElement = StructElement(
-            name: "Configuration",
-            methods: [MethodElement(name: "validate", returnType: "Bool")],
-            accessLevel: .public
-        )
-        let annotation = MockAnnotation(
-            type: .stub,
-            element: .struct(structElement),
-            location: SourceLocation(line: 1, column: 1, file: "test.swift")
-        )
-        
-        // When
-        let result = try sut.generateMock(for: annotation.element, annotation: annotation)
-        
-        // Then
-        XCTAssertTrue(result.contains("ConfigurationStub"))
-        XCTAssertTrue(result.contains("Configuration"))
-    }
     
     func testStubGenerator_givenFunctionWithParameters_whenGeneratingStub_thenCreatesFunctionWithSameName() throws {
         // Given
@@ -284,8 +263,7 @@ final class BDDStyleTests: XCTestCase {
         
         let sut = MockGenerator(
             inputPath: tempDir.path,
-            outputPath: outputDir.path,
-            filePattern: "*.swift"
+            outputPath: outputDir.path
         )
         
         // When

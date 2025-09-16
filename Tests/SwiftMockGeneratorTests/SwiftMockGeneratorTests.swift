@@ -9,13 +9,11 @@ final class SwiftMockGeneratorTests: XCTestCase {
         // Given
         let inputPath = "test"
         let outputPath = "test_output"
-        let filePattern = "*.swift"
         
         // When
         let sut = MockGenerator(
             inputPath: inputPath,
-            outputPath: outputPath,
-            filePattern: filePattern
+            outputPath: outputPath
         )
         
         // Then
@@ -26,7 +24,7 @@ final class SwiftMockGeneratorTests: XCTestCase {
     
     func testMockGenerator_givenStubAnnotation_whenCreatingOutputFileName_thenReturnsCorrectStubFileName() {
         // Given
-        let sut = MockGenerator(inputPath: ".", outputPath: ".", filePattern: "*.swift")
+        let sut = MockGenerator(inputPath: ".", outputPath: ".")
         let protocolElement = ProtocolElement(name: "NetworkService")
         let annotation = MockAnnotation(
             type: .stub,
@@ -44,7 +42,7 @@ final class SwiftMockGeneratorTests: XCTestCase {
     
     func testMockGenerator_givenSpyAnnotation_whenCreatingOutputFileName_thenReturnsCorrectSpyFileName() {
         // Given
-        let sut = MockGenerator(inputPath: ".", outputPath: ".", filePattern: "*.swift")
+        let sut = MockGenerator(inputPath: ".", outputPath: ".")
         let classElement = ClassElement(name: "DataRepository")
         let annotation = MockAnnotation(
             type: .spy,
@@ -62,11 +60,11 @@ final class SwiftMockGeneratorTests: XCTestCase {
     
     func testMockGenerator_givenDummyAnnotation_whenCreatingOutputFileName_thenReturnsCorrectDummyFileName() {
         // Given
-        let sut = MockGenerator(inputPath: ".", outputPath: ".", filePattern: "*.swift")
-        let structElement = StructElement(name: "Configuration")
+        let sut = MockGenerator(inputPath: ".", outputPath: ".")
+        let classElement = ClassElement(name: "Configuration")
         let annotation = MockAnnotation(
             type: .dummy,
-            element: .struct(structElement),
+            element: .class(classElement),
             location: SourceLocation(line: 1, column: 1, file: "test.swift")
         )
         let originalFile = "Configuration.swift"
@@ -80,7 +78,7 @@ final class SwiftMockGeneratorTests: XCTestCase {
     
     func testMockGenerator_givenComplexFilePath_whenCreatingOutputFileName_thenExtractsCorrectBaseName() {
         // Given
-        let sut = MockGenerator(inputPath: ".", outputPath: ".", filePattern: "*.swift")
+        let sut = MockGenerator(inputPath: ".", outputPath: ".")
         let protocolElement = ProtocolElement(name: "AuthenticationService")
         let annotation = MockAnnotation(
             type: .stub,
@@ -98,7 +96,7 @@ final class SwiftMockGeneratorTests: XCTestCase {
     
     func testMockGenerator_givenFileWithUnderscores_whenCreatingOutputFileName_thenPreservesUnderscores() {
         // Given
-        let sut = MockGenerator(inputPath: ".", outputPath: ".", filePattern: "*.swift")
+        let sut = MockGenerator(inputPath: ".", outputPath: ".")
         let protocolElement = ProtocolElement(name: "NetworkService")
         let annotation = MockAnnotation(
             type: .spy,
@@ -116,7 +114,7 @@ final class SwiftMockGeneratorTests: XCTestCase {
     
     func testMockGenerator_givenFileWithNumbers_whenCreatingOutputFileName_thenPreservesNumbers() {
         // Given
-        let sut = MockGenerator(inputPath: ".", outputPath: ".", filePattern: "*.swift")
+        let sut = MockGenerator(inputPath: ".", outputPath: ".")
         let classElement = ClassElement(name: "APIv2Client")
         let annotation = MockAnnotation(
             type: .dummy,
@@ -134,7 +132,7 @@ final class SwiftMockGeneratorTests: XCTestCase {
     
     func testMockGenerator_givenFileWithSpecialCharacters_whenCreatingOutputFileName_thenPreservesSpecialCharacters() {
         // Given
-        let sut = MockGenerator(inputPath: ".", outputPath: ".", filePattern: "*.swift")
+        let sut = MockGenerator(inputPath: ".", outputPath: ".")
         let protocolElement = ProtocolElement(name: "Test")
         let annotation = MockAnnotation(
             type: .stub,
@@ -152,7 +150,7 @@ final class SwiftMockGeneratorTests: XCTestCase {
     
     func testMockGenerator_givenAllMockTypes_whenCreatingOutputFileName_thenReturnsCorrectSuffixes() {
         // Given
-        let sut = MockGenerator(inputPath: ".", outputPath: ".", filePattern: "*.swift")
+        let sut = MockGenerator(inputPath: ".", outputPath: ".")
         let protocolElement = ProtocolElement(name: "TestProtocol")
         let originalFile = "TestService.swift"
         let mockTypes: [MockType] = [.stub, .spy, .dummy]
@@ -175,7 +173,7 @@ final class SwiftMockGeneratorTests: XCTestCase {
     
     func testMockGenerator_givenFileWithoutExtension_whenCreatingOutputFileName_thenAppendsSwiftExtension() {
         // Given
-        let sut = MockGenerator(inputPath: ".", outputPath: ".", filePattern: "*.swift")
+        let sut = MockGenerator(inputPath: ".", outputPath: ".")
         let protocolElement = ProtocolElement(name: "Service")
         let annotation = MockAnnotation(
             type: .stub,
@@ -193,7 +191,7 @@ final class SwiftMockGeneratorTests: XCTestCase {
     
     func testMockGenerator_givenFileWithMultipleDots_whenCreatingOutputFileName_thenRemovesOnlyLastExtension() {
         // Given
-        let sut = MockGenerator(inputPath: ".", outputPath: ".", filePattern: "*.swift")
+        let sut = MockGenerator(inputPath: ".", outputPath: ".")
         let classElement = ClassElement(name: "APIClient")
         let annotation = MockAnnotation(
             type: .spy,
@@ -211,11 +209,11 @@ final class SwiftMockGeneratorTests: XCTestCase {
     
     func testMockGenerator_givenEmptyFileName_whenCreatingOutputFileName_thenHandlesGracefully() {
         // Given
-        let sut = MockGenerator(inputPath: ".", outputPath: ".", filePattern: "*.swift")
-        let structElement = StructElement(name: "Config")
+        let sut = MockGenerator(inputPath: ".", outputPath: ".")
+        let classElement = ClassElement(name: "Config")
         let annotation = MockAnnotation(
             type: .dummy,
-            element: .struct(structElement),
+            element: .class(classElement),
             location: SourceLocation(line: 1, column: 1, file: "test.swift")
         )
         let originalFile = ""
@@ -229,7 +227,7 @@ final class SwiftMockGeneratorTests: XCTestCase {
     
     func testMockGenerator_givenRelativeFilePath_whenCreatingOutputFileName_thenExtractsCorrectBaseName() {
         // Given
-        let sut = MockGenerator(inputPath: ".", outputPath: ".", filePattern: "*.swift")
+        let sut = MockGenerator(inputPath: ".", outputPath: ".")
         let functionElement = FunctionElement(name: "authenticate")
         let annotation = MockAnnotation(
             type: .stub,
@@ -247,7 +245,7 @@ final class SwiftMockGeneratorTests: XCTestCase {
     
     func testMockGenerator_givenFileNameMatchingMockSuffix_whenCreatingOutputFileName_thenDoesNotDuplicateSuffix() {
         // Given
-        let sut = MockGenerator(inputPath: ".", outputPath: ".", filePattern: "*.swift")
+        let sut = MockGenerator(inputPath: ".", outputPath: ".")
         let protocolElement = ProtocolElement(name: "Service")
         let annotation = MockAnnotation(
             type: .stub,
@@ -430,23 +428,6 @@ final class SwiftMockGeneratorTests: XCTestCase {
         XCTAssertTrue(sut.isFinal)
     }
     
-    // MARK: - StructElement Tests
-    
-    func testStructElementCreation() {
-        // Given
-        let name = "TestStruct"
-        let accessLevel = AccessLevel.public
-        
-        // When
-        let sut = StructElement(
-            name: name,
-            accessLevel: accessLevel
-        )
-        
-        // Then
-        XCTAssertEqual(sut.name, name)
-        XCTAssertEqual(sut.accessLevel, accessLevel)
-    }
     
     // MARK: - FunctionElement Tests
     
@@ -504,24 +485,20 @@ final class SwiftMockGeneratorTests: XCTestCase {
         // Given
         let protocolElement = ProtocolElement(name: "TestProtocol")
         let classElement = ClassElement(name: "TestClass")
-        let structElement = StructElement(name: "TestStruct")
         let functionElement = FunctionElement(name: "testFunction")
         
         // When
         let protocolSUT = CodeElement.protocol(protocolElement)
         let classSUT = CodeElement.class(classElement)
-        let structSUT = CodeElement.struct(structElement)
         let functionSUT = CodeElement.function(functionElement)
         
         // Then
         XCTAssertEqual(protocolSUT.name, "TestProtocol")
         XCTAssertEqual(classSUT.name, "TestClass")
-        XCTAssertEqual(structSUT.name, "TestStruct")
         XCTAssertEqual(functionSUT.name, "testFunction")
         
         XCTAssertTrue(protocolSUT.isReference)
         XCTAssertTrue(classSUT.isReference)
-        XCTAssertFalse(structSUT.isReference)
         XCTAssertFalse(functionSUT.isReference)
     }
     
@@ -531,15 +508,13 @@ final class SwiftMockGeneratorTests: XCTestCase {
         // Given
         let element = ProtocolElement(name: "TestProtocol")
         let location = SourceLocation(line: 10, column: 5, file: "test.swift")
-        let options = ["option1": "value1"]
         let mockType = MockType.stub
         
         // When
         let sut = MockAnnotation(
             type: mockType,
             element: .protocol(element),
-            location: location,
-            options: options
+            location: location
         )
         
         // Then
@@ -548,6 +523,5 @@ final class SwiftMockGeneratorTests: XCTestCase {
         XCTAssertEqual(sut.location.line, 10)
         XCTAssertEqual(sut.location.column, 5)
         XCTAssertEqual(sut.location.file, "test.swift")
-        XCTAssertEqual(sut.options["option1"], "value1")
     }
 }

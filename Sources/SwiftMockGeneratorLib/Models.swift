@@ -19,13 +19,11 @@ public struct MockAnnotation {
     let type: MockType
     let element: CodeElement
     let location: SourceLocation
-    let options: [String: String]
     
-    public init(type: MockType, element: CodeElement, location: SourceLocation, options: [String: String] = [:]) {
+    public init(type: MockType, element: CodeElement, location: SourceLocation) {
         self.type = type
         self.element = element
         self.location = location
-        self.options = options
     }
 }
 
@@ -48,7 +46,6 @@ public struct SourceLocation {
 public enum CodeElement {
     case `protocol`(ProtocolElement)
     case `class`(ClassElement)
-    case `struct`(StructElement)
     case function(FunctionElement)
     
     var name: String {
@@ -56,8 +53,6 @@ public enum CodeElement {
         case .protocol(let element):
             return element.name
         case .class(let element):
-            return element.name
-        case .struct(let element):
             return element.name
         case .function(let element):
             return element.name
@@ -68,7 +63,7 @@ public enum CodeElement {
         switch self {
         case .protocol, .class:
             return true
-        case .struct, .function:
+        case .function:
             return false
         }
     }
@@ -122,28 +117,6 @@ public struct ClassElement {
     }
 }
 
-/// Struct element information
-public struct StructElement {
-    let name: String
-    let methods: [MethodElement]
-    let properties: [PropertyElement]
-    let initializers: [InitializerElement]
-    let inheritance: [String]
-    let accessLevel: AccessLevel
-    let genericParameters: [String]
-    
-    public init(name: String, methods: [MethodElement] = [], properties: [PropertyElement] = [],
-                initializers: [InitializerElement] = [], inheritance: [String] = [],
-                accessLevel: AccessLevel = .internal, genericParameters: [String] = []) {
-        self.name = name
-        self.methods = methods
-        self.properties = properties
-        self.initializers = initializers
-        self.inheritance = inheritance
-        self.accessLevel = accessLevel
-        self.genericParameters = genericParameters
-    }
-}
 
 /// Function element information
 public struct FunctionElement {

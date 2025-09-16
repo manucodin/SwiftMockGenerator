@@ -6,7 +6,6 @@ import SwiftParser
 public class MockGenerator {
     private let inputPath: String
     private let outputPath: String
-    private let filePattern: String
     private let verbose: Bool
     
     private let fileManager = FileManager.default
@@ -15,10 +14,9 @@ public class MockGenerator {
     private let spyGenerator = SpyGenerator()
     private let dummyGenerator = DummyGenerator()
     
-    public init(inputPath: String, outputPath: String, filePattern: String, verbose: Bool = false) {
+    public init(inputPath: String, outputPath: String, verbose: Bool = false) {
         self.inputPath = inputPath
         self.outputPath = outputPath
-        self.filePattern = filePattern
         self.verbose = verbose
     }
     

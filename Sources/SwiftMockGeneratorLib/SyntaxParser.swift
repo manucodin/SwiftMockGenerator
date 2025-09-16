@@ -41,10 +41,9 @@ public class AnnotationVisitor: SyntaxVisitor {
         if let annotation = extractAnnotation(for: node) {
             let protocolElement = parseProtocolElement(from: node)
             let mockAnnotation = MockAnnotation(
-                type: annotation.type,
+                type: annotation,
                 element: .protocol(protocolElement),
-                location: createSourceLocation(for: node),
-                options: annotation.options
+                location: createSourceLocation(for: node)
             )
             annotations.append(mockAnnotation)
         }
@@ -57,10 +56,9 @@ public class AnnotationVisitor: SyntaxVisitor {
         if let annotation = extractAnnotation(for: node) {
             let classElement = parseClassElement(from: node)
             let mockAnnotation = MockAnnotation(
-                type: annotation.type,
+                type: annotation,
                 element: .class(classElement),
-                location: createSourceLocation(for: node),
-                options: annotation.options
+                location: createSourceLocation(for: node)
             )
             annotations.append(mockAnnotation)
         }
@@ -70,16 +68,8 @@ public class AnnotationVisitor: SyntaxVisitor {
     // MARK: - Struct Declarations
     
     public override func visit(_ node: StructDeclSyntax) -> SyntaxVisitorContinueKind {
-        if let annotation = extractAnnotation(for: node) {
-            let structElement = parseStructElement(from: node)
-            let mockAnnotation = MockAnnotation(
-                type: annotation.type,
-                element: .struct(structElement),
-                location: createSourceLocation(for: node),
-                options: annotation.options
-            )
-            annotations.append(mockAnnotation)
-        }
+        // Skip struct declarations - structs are value types and generally don't need mocks
+        // Use the actual struct instance in tests instead
         return .visitChildren
     }
     
@@ -92,10 +82,9 @@ public class AnnotationVisitor: SyntaxVisitor {
             if let annotation = extractAnnotation(for: node) {
                 let functionElement = parseFunctionElement(from: node)
                 let mockAnnotation = MockAnnotation(
-                    type: annotation.type,
+                    type: annotation,
                     element: .function(functionElement),
-                    location: createSourceLocation(for: node),
-                    options: annotation.options
+                    location: createSourceLocation(for: node)
                 )
                 annotations.append(mockAnnotation)
             }
@@ -105,15 +94,13 @@ public class AnnotationVisitor: SyntaxVisitor {
     
     // MARK: - Private Parsing Methods
     
-    private func extractAnnotation(for node: SyntaxProtocol) -> (type: MockType, options: [String: String])? {
+    private func extractAnnotation(for node: SyntaxProtocol) -> MockType? {
         // Get the declaration keyword to find the actual line
         var searchText = ""
         if let protocolDecl = node.as(ProtocolDeclSyntax.self) {
             searchText = "protocol \(protocolDecl.name.text)"
         } else if let classDecl = node.as(ClassDeclSyntax.self) {
             searchText = "class \(classDecl.name.text)"
-        } else if let structDecl = node.as(StructDeclSyntax.self) {
-            searchText = "struct \(structDecl.name.text)"
         } else if let funcDecl = node.as(FunctionDeclSyntax.self) {
             searchText = "func \(funcDecl.name.text)"
         }
@@ -142,8 +129,8 @@ public class AnnotationVisitor: SyntaxVisitor {
             if arrayIndex >= 0 && arrayIndex < sourceLines.count {
                 let line = sourceLines[arrayIndex]
                 
-                if let annotation = parseAnnotationComment(line) {
-                    return annotation
+                if let annotationType = parseAnnotationComment(line) {
+                    return annotationType
                 }
                 
                 // If we encounter a non-empty line that's not a comment or annotation,
@@ -157,7 +144,7 @@ public class AnnotationVisitor: SyntaxVisitor {
         return nil
     }
     
-    private func parseAnnotationComment(_ line: String) -> (type: MockType, options: [String: String])? {
+    private func parseAnnotationComment(_ line: String) -> MockType? {
         let trimmedLine = line.trimmingCharacters(in: .whitespaces)
         
         // Handle both single-line and multi-line comment formats
@@ -175,36 +162,13 @@ public class AnnotationVisitor: SyntaxVisitor {
         for mockType in MockType.allCases {
             let annotationPattern = "@\(mockType.rawValue)"
             if commentContent.hasPrefix(annotationPattern) {
-                let optionsString = String(commentContent.dropFirst(annotationPattern.count))
-                let options = parseAnnotationOptions(optionsString)
-                return (type: mockType, options: options)
+                return mockType
             }
         }
         
         return nil
     }
     
-    private func parseAnnotationOptions(_ optionsString: String) -> [String: String] {
-        let trimmed = optionsString.trimmingCharacters(in: .whitespaces)
-        guard !trimmed.isEmpty, trimmed.hasPrefix("("), trimmed.hasSuffix(")") else {
-            return [:]
-        }
-        
-        let content = String(trimmed.dropFirst().dropLast())
-        var options: [String: String] = [:]
-        
-        let components = content.components(separatedBy: ",")
-        for component in components {
-            let keyValue = component.components(separatedBy: ":")
-            if keyValue.count == 2 {
-                let key = keyValue[0].trimmingCharacters(in: .whitespaces)
-                let value = keyValue[1].trimmingCharacters(in: .whitespaces)
-                options[key] = value
-            }
-        }
-        
-        return options
-    }
     
     private func createSourceLocation(for node: SyntaxProtocol) -> SourceLocation {
         let location = sourceLocationConverter.location(for: node.position)
@@ -287,41 +251,6 @@ public class AnnotationVisitor: SyntaxVisitor {
         )
     }
     
-    private func parseStructElement(from node: StructDeclSyntax) -> StructElement {
-        let name = node.name.text
-        let accessLevel = parseAccessLevel(from: node.modifiers)
-        let inheritance = parseInheritanceClause(node.inheritanceClause)
-        let genericParameters: [String] = [] // TODO: Parse generic parameters properly
-        
-        // Parse struct members
-        var methods: [MethodElement] = []
-        var properties: [PropertyElement] = []
-        var initializers: [InitializerElement] = []
-        
-        let members = node.memberBlock.members
-        for member in members {
-            if let functionDecl = member.decl.as(FunctionDeclSyntax.self) {
-                let method = parseMethodElement(from: functionDecl)
-                methods.append(method)
-            } else if let varDecl = member.decl.as(VariableDeclSyntax.self) {
-                let parsedProperties = parsePropertyElements(from: varDecl)
-                properties.append(contentsOf: parsedProperties)
-            } else if let initDecl = member.decl.as(InitializerDeclSyntax.self) {
-                let initializer = parseInitializerElement(from: initDecl)
-                initializers.append(initializer)
-            }
-        }
-        
-        return StructElement(
-            name: name,
-            methods: methods,
-            properties: properties,
-            initializers: initializers,
-            inheritance: inheritance,
-            accessLevel: accessLevel,
-            genericParameters: genericParameters
-        )
-    }
     
     private func parseFunctionElement(from node: FunctionDeclSyntax) -> FunctionElement {
         let name = node.name.text

@@ -27,9 +27,6 @@ struct SwiftMockGenerator: AsyncParsableCommand {
     @Option(name: .shortAndLong, help: "Output directory for generated mock files")
     var output: String = "./Mocks"
     
-    @Option(help: "File pattern to match Swift files")
-    var pattern: String = "*.swift"
-    
     @Flag(name: .shortAndLong, help: "Enable verbose logging")
     var verbose: Bool = false
     
@@ -40,7 +37,6 @@ struct SwiftMockGenerator: AsyncParsableCommand {
         let generator = MockGenerator(
             inputPath: input,
             outputPath: output,
-            filePattern: pattern,
             verbose: verbose
         )
         
