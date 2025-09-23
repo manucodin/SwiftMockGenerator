@@ -60,13 +60,22 @@ jobs:
       - name: Run tests
         run: swift test --configuration release --parallel --enable-code-coverage
         
+      - name: Verify coverage files
+        run: |
+          echo "Checking for coverage files..."
+          find .build -name "*.json" -type f | grep -i codecov || echo "No codecov files found"
+          echo "All codecov directories:"
+          find .build -name "codecov" -type d
+          echo "Coverage files found:"
+          find .build -name "*.json" -path "*/codecov/*" -exec ls -la {} \;
+        
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          files: .build/debug/codecov/*.json
           fail_ci_if_error: false
           verbose: true
+          directory: .build/
           
       - name: Build executable
         run: swift build --configuration release --product swift-mock-generator
