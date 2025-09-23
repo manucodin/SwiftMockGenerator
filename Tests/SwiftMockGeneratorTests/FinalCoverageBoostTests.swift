@@ -144,8 +144,7 @@ final class FinalCoverageBoostTests: XCTestCase {
         
         let sut = MockGenerator(
             inputPath: tempDir.path,
-            outputPath: outputDir.path,
-            filePattern: "*.swift"
+            outputPath: outputDir.path
         )
         
         // When - Test with empty input directory
@@ -180,9 +179,9 @@ final class FinalCoverageBoostTests: XCTestCase {
     func testMockGenerator_whenGivenInvalidPaths_thenHandlesErrorsGracefully() async {
         // Given
         let invalidSUTs = [
-            MockGenerator(inputPath: "", outputPath: "/tmp", filePattern: "*.swift"),
-            MockGenerator(inputPath: "/dev/null", outputPath: "", filePattern: "*.swift"),
-            MockGenerator(inputPath: "/tmp", outputPath: "/tmp", filePattern: "")
+            MockGenerator(inputPath: "", outputPath: "/tmp"),
+            MockGenerator(inputPath: "/dev/null", outputPath: ""),
+            MockGenerator(inputPath: "/tmp", outputPath: "/tmp")
         ]
         
         // When & Then
@@ -218,7 +217,6 @@ final class FinalCoverageBoostTests: XCTestCase {
         let elements: [CodeElement] = [
             .protocol(protocolElement),
             .class(ClassElement(name: "TestClass")),
-            .struct(StructElement(name: "TestStruct")),
             .function(FunctionElement(name: "testFunction", returnType: "Double"))
         ]
         
@@ -258,7 +256,6 @@ final class FinalCoverageBoostTests: XCTestCase {
         let elements: [CodeElement] = [
             .protocol(protocolWithMethods),
             .class(ClassElement(name: "TestClass")),
-            .struct(StructElement(name: "TestStruct")),
             .function(FunctionElement(name: "testFunction", returnType: "String")),
             .function(FunctionElement(name: "voidFunction")) // no return type
         ]
@@ -298,7 +295,6 @@ final class FinalCoverageBoostTests: XCTestCase {
         let elements: [CodeElement] = [
             .protocol(protocolWithMixedTypes),
             .class(ClassElement(name: "TestClass")),
-            .struct(StructElement(name: "TestStruct")),
             .function(FunctionElement(name: "testFunction", returnType: "String")),
             .function(FunctionElement(name: "voidFunction"))
         ]
@@ -498,24 +494,6 @@ final class FinalCoverageBoostTests: XCTestCase {
         XCTAssertTrue(sut.isThrowing)
     }
     
-    func testAssociatedTypeElement_whenCreatedWithConstraints_thenStoresAllCorrectly() {
-        // Given
-        let name = "Item"
-        let constraint = "Codable"
-        let defaultType = "String"
-        
-        // When
-        let sut = AssociatedTypeElement(
-            name: name,
-            constraint: constraint,
-            defaultType: defaultType
-        )
-        
-        // Then
-        XCTAssertEqual(sut.name, name)
-        XCTAssertEqual(sut.constraint, constraint)
-        XCTAssertEqual(sut.defaultType, defaultType)
-    }
     
     // MARK: - Complex Elements SUT Coverage
     
@@ -562,7 +540,6 @@ final class FinalCoverageBoostTests: XCTestCase {
         let elements: [CodeElement] = [
             .protocol(complexProtocol),
             .class(complexClass),
-            .struct(StructElement(name: "TestStruct")),
             .function(FunctionElement(name: "testFunction"))
         ]
         
@@ -597,15 +574,10 @@ final class FinalCoverageBoostTests: XCTestCase {
             inheritance: ["ParentClass", "Protocol1", "Protocol2"]
         )
         
-        let structWithInheritance = StructElement(
-            name: "ConformingStruct",
-            inheritance: ["Protocol1", "Protocol2", "Protocol3"]
-        )
         
         let elements: [CodeElement] = [
             .protocol(protocolWithInheritance),
             .class(classWithInheritance),
-            .struct(structWithInheritance)
         ]
         
         // When & Then

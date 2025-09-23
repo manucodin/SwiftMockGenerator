@@ -1,168 +1,297 @@
 # SwiftMockGenerator
 
-A powerful Swift CLI tool that automatically generates mock objects (stubs, spies, and dummies) from your Swift source code using comment annotations.
+[![Swift](https://img.shields.io/badge/Swift-5.9+-orange.svg)](https://swift.org)
+[![macOS](https://img.shields.io/badge/macOS-12+-blue.svg)](https://www.apple.com/macos)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-## Features
+A powerful Swift CLI tool that automatically generates comprehensive mock objects (stubs, spies, and dummies) from your Swift source code using simple comment annotations. Perfect for unit testing, TDD, and creating reliable test doubles.
 
-- **Comment-based Generation**: Generate mocks using simple comment annotations like `// @Stub`, `// @Spy`, `// @Dummy`
-- **No Runtime Dependencies**: Generated mocks have no dependencies on the generator tool
-- **Multiple Mock Types**: Supports stubs, spies, and dummy implementations
-- **Swift Syntax**: Uses Apple's SwiftSyntax for accurate Swift code parsing
-- **CLI Interface**: Easy to integrate into build processes and CI/CD pipelines
+## ✨ Features
 
-## Installation
+- **🎯 Comment-based Generation**: Generate mocks using simple annotations like `// @Stub`, `// @Spy`, `// @Dummy`
+- **🚀 Zero Runtime Dependencies**: Generated mocks have no dependencies on the generator tool
+- **🔧 Multiple Mock Types**: Supports stubs, spies, and dummy implementations
+- **⚡ Swift Syntax Powered**: Uses Apple's SwiftSyntax for accurate Swift code parsing
+- **🛠️ CLI Interface**: Easy to integrate into build processes and CI/CD pipelines
+- **📊 Call Tracking**: Spies automatically track method calls, parameters, and return values
+- **🎭 Error Mocking**: Configure spies to throw specific errors for testing error scenarios
+- **📝 Clean Code**: Generated mocks follow Swift best practices with organized structure
+- **🔍 Verbose Logging**: Detailed output for debugging and monitoring
 
-### Build from Source
+## 🚀 Quick Start
+
+### Installation
 
 ```bash
-git clone <your-repo>
+# Clone the repository
+git clone https://github.com/manucodin/SwiftMockGenerator.git
 cd SwiftMockGenerator
-swift build -c release
-```
 
-## Usage
+# Install system-wide
+make install
 
-### Basic Usage
-
-```bash
+# Or run directly
 swift run swift-mock-generator --input ./Sources --output ./Tests/Mocks
 ```
 
-### Command Line Options
+### Basic Usage
 
-- `--input, -i`: Input directory containing Swift source files (default: ".")
-- `--output, -o`: Output directory for generated mock files (default: "./Mocks")
-- `--pattern`: File pattern to match Swift files (default: "*.swift")
-- `--verbose, -v`: Enable verbose logging
-- `--clean`: Clean output directory before generating mocks
-
-### Mock Types
-
-#### Stub (`// @Stub`)
-Generates implementations with sensible default return values:
-
+1. **Annotate your code** with mock comments:
 ```swift
 // @Stub
 protocol NetworkService {
     func fetchData() async throws -> Data
     var isConnected: Bool { get }
 }
-```
 
-Generated stub provides default implementations that return meaningful default values.
-
-#### Spy (`// @Spy`)
-Generates implementations that record method calls and parameters:
-
-```swift
 // @Spy
 class DataManager {
-    func save(data: String) -> Bool {
+    func save(data: String) throws -> Bool {
         return true
     }
 }
 ```
 
-Generated spy tracks call counts, parameters, and provides configurable return values.
+2. **Generate mocks**:
+```bash
+swift-mock-generator --input ./Sources --output ./Tests/Mocks --verbose
+```
 
-#### Dummy (`// @Dummy`)
+3. **Use in your tests**:
+```swift
+func testDataManager() throws {
+    let spy = DataManagerSpy()
+    spy.saveReturnValue = true
+    spy.saveThrowError = NetworkError.connectionFailed
+    
+    // Test your code with the spy
+    XCTAssertThrowsError(try spy.save(data: "test"))
+    XCTAssertEqual(spy.saveCallCount, 1)
+}
+```
+
+## 📖 Command Line Options
+
+| Option | Short | Description | Default |
+|--------|-------|-------------|---------|
+| `--input` | `-i` | Input directory containing Swift source files | `.` |
+| `--output` | `-o` | Output directory for generated mock files | `./Mocks` |
+| `--verbose` | `-v` | Enable verbose logging | `false` |
+| `--clean` | | Clean output directory before generating mocks | `false` |
+
+## 🎭 Mock Types
+
+### Stub (`// @Stub`)
+Generates implementations with sensible default return values:
+
+```swift
+// @Stub
+protocol UserService {
+    func getUser(id: String) async throws -> User
+    var isLoggedIn: Bool { get }
+}
+```
+
+**Generated Stub:**
+```swift
+class UserServiceStub: UserService {
+    var getUserReturnValue: User = User()
+    var isLoggedInReturnValue: Bool = false
+    
+    func getUser(id: String) async throws -> User {
+        return getUserReturnValue
+    }
+    
+    var isLoggedIn: Bool {
+        return isLoggedInReturnValue
+    }
+}
+```
+
+### Spy (`// @Spy`)
+Generates implementations that record method calls and parameters:
+
+```swift
+// @Spy
+class DataRepository {
+    func save(_ item: Item) throws -> Bool {
+        return true
+    }
+    
+    func load(id: String) -> Item? {
+        return nil
+    }
+}
+```
+
+**Generated Spy:**
+```swift
+class DataRepositorySpy: DataRepository {
+    
+    // MARK: - Reset
+    func resetSpy() {
+        saveCallCount = 0
+        saveCallParameters = []
+        saveThrowError = nil
+        loadCallCount = 0
+        loadCallParameters = []
+        loadReturnValue = nil
+    }
+    
+    // MARK: - save
+    private(set) var saveCallCount = 0
+    private(set) var saveCallParameters: [(Item)] = []
+    var saveThrowError: Error?
+    var saveReturnValue: Bool = false
+    
+    func save(_ item: Item) throws -> Bool {
+        saveCallCount += 1
+        saveCallParameters.append((item))
+        if let error = saveThrowError { throw error }
+        return saveReturnValue
+    }
+    
+    // MARK: - load
+    private(set) var loadCallCount = 0
+    private(set) var loadCallParameters: [(String)] = []
+    var loadReturnValue: Item?
+    
+    func load(id: String) -> Item? {
+        loadCallCount += 1
+        loadCallParameters.append((id))
+        return loadReturnValue
+    }
+}
+```
+
+### Dummy (`// @Dummy`)
 Generates minimal implementations that satisfy compile-time requirements:
 
 ```swift
 // @Dummy
 protocol Logger {
     func log(message: String)
+    func logError(_ error: Error)
 }
 ```
 
-Generated dummy does nothing but compiles successfully.
-
-## Examples
-
-See the `Examples/` directory for sample Swift files with annotations.
-
-### Generate Mocks for Examples
-
-```bash
-swift run swift-mock-generator --input ./Examples/Sources --output ./Examples/Mocks --verbose
+**Generated Dummy:**
+```swift
+class LoggerDummy: Logger {
+    func log(message: String) {
+        // Dummy implementation - does nothing
+    }
+    
+    func logError(_ error: Error) {
+        // Dummy implementation - does nothing
+    }
+}
 ```
 
-## Supported Swift Features
+## 🛠️ Makefile Commands
 
-- Protocols with methods, properties, and associated types
-- Classes with inheritance
-- Structs
-- Functions with parameters and return types
-- Generic types and functions
-- Async/await syntax
-- Throwing functions
-- Access control levels
+```bash
+make help          # Show all available commands
+make install       # Build and install system-wide
+make uninstall     # Remove from system
+make test          # Run test suite (99 tests)
+make coverage      # Run tests with coverage report
+make demo          # See the tool in action with examples
+make clean         # Clean build artifacts
+```
 
-## Integration
+## 🎯 Supported Swift Features
+
+- ✅ **Protocols** with methods, properties, and inheritance
+- ✅ **Classes** with inheritance and final modifiers
+- ✅ **Functions** with parameters, return types, and async/await
+- ✅ **Generic types** and functions
+- ✅ **Throwing functions** with error mocking
+- ✅ **Access control** levels (public, internal, private, fileprivate)
+- ✅ **Property wrappers** and computed properties
+- ✅ **Initializers** with various modifiers
+
+## 🔧 Integration
 
 ### Xcode Build Phase
 
 Add a build phase script to automatically generate mocks:
 
 ```bash
-if which swift > /dev/null; then
-  swift run --package-path path/to/SwiftMockGenerator swift-mock-generator --input ./Sources --output ./Tests/Mocks
+if which swift-mock-generator > /dev/null; then
+  swift-mock-generator --input ./Sources --output ./Tests/Mocks --verbose
 else
-  echo "Swift not found"
+  echo "SwiftMockGenerator not found. Installing..."
+  # Add installation commands here
   exit 1
 fi
 ```
 
-### CI/CD
+### Swift Package Manager
 
-Integrate into your continuous integration pipeline to ensure mocks are always up-to-date.
+Add as a dependency in your `Package.swift`:
 
-## Requirements
+```swift
+dependencies: [
+    .package(url: "https://github.com/manucodin/SwiftMockGenerator.git", from: "1.0.0")
+]
+```
 
-- Swift 5.9+
-- macOS 12+
-
-## Dependencies
-
-- [Swift Argument Parser](https://github.com/apple/swift-argument-parser)
-- [SwiftSyntax](https://github.com/apple/swift-syntax)
-
-## Contributing
-
-1. Fork the repository
-2. Create your feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
-
-## License
-
-This project follows standard open source practices.
-
-## Architecture
-
-### Core Components
-
-- **SyntaxParser**: Uses SwiftSyntax to parse Swift code and extract annotations
-- **MockGenerators**: Separate generators for each mock type (Stub, Spy, Dummy)
-- **Models**: Data structures representing Swift code elements
-- **CLI**: Command-line interface powered by Swift Argument Parser
-
-### Code Generation Strategy
-
-1. **Parse**: Analyze Swift source files using SwiftSyntax
-2. **Extract**: Find comment annotations and associated code elements
-3. **Generate**: Create appropriate mock implementations
-4. **Write**: Output generated code to specified directories
-
-## Troubleshooting
+## 🐛 Troubleshooting
 
 ### Common Issues
 
 1. **Compilation Errors**: Ensure your input Swift files are syntactically correct
 2. **No Mocks Generated**: Check that comment annotations are properly formatted
 3. **Access Level Issues**: Generated mocks respect the access levels of original types
+4. **Missing Dependencies**: Ensure Swift 5.9+ and macOS 12+ are installed
 
 ### Debug Mode
 
-Use `--verbose` flag to see detailed logging of the generation process.
+Use `--verbose` flag to see detailed logging:
+
+```bash
+swift-mock-generator --input ./Sources --output ./Tests/Mocks --verbose
+```
+
+### Getting Help
+
+- Check the [Examples](./Examples/) directory for sample usage
+- Run `make demo` to see the tool in action
+- Review the test suite for implementation patterns
+
+## 📋 Requirements
+
+- **Swift**: 5.9+
+- **macOS**: 12+
+- **Xcode**: 14+ (for development)
+
+## 📦 Dependencies
+
+- [Swift Argument Parser](https://github.com/apple/swift-argument-parser) - CLI interface
+- [SwiftSyntax](https://github.com/apple/swift-syntax) - Swift code parsing
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Make your changes
+4. Add tests for new functionality
+5. Ensure all tests pass (`make test`)
+6. Commit your changes (`git commit -m 'Add amazing feature'`)
+7. Push to the branch (`git push origin feature/amazing-feature`)
+8. Open a Pull Request
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+- Built with [SwiftSyntax](https://github.com/apple/swift-syntax) by Apple
+- CLI powered by [Swift Argument Parser](https://github.com/apple/swift-argument-parser)
+- Inspired by modern testing practices and TDD methodologies
+
+---
+
+**Made with ❤️ for the Swift community**

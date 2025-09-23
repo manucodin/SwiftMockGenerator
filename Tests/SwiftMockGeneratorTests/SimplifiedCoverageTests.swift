@@ -42,7 +42,7 @@ final class SimplifiedCoverageTests: XCTestCase {
         XCTAssertFalse(result.isEmpty)
         XCTAssertTrue(result.contains("TestProtocol"))
         XCTAssertTrue(result.contains("Spy"))
-        XCTAssertTrue(result.contains("Call Tracking"))
+        XCTAssertTrue(result.contains("// MARK: - Reset"))
     }
     
     func testDummyGenerator_whenGeneratingMockFromProtocol_thenProducesDummyCode() throws {
@@ -76,7 +76,6 @@ final class SimplifiedCoverageTests: XCTestCase {
         let elements: [CodeElement] = [
             .protocol(ProtocolElement(name: "TestProtocol")),
             .class(ClassElement(name: "TestClass")),
-            .struct(StructElement(name: "TestStruct")),
             .function(FunctionElement(name: "testFunction"))
         ]
         
@@ -164,8 +163,7 @@ final class SimplifiedCoverageTests: XCTestCase {
         
         let sut = MockGenerator(
             inputPath: tempDir.path,
-            outputPath: outputDir.path,
-            filePattern: "*.swift"
+            outputPath: outputDir.path
         )
         
         // When
@@ -190,8 +188,7 @@ final class SimplifiedCoverageTests: XCTestCase {
         
         let sut = MockGenerator(
             inputPath: "/nonexistent",
-            outputPath: tempDir.path,
-            filePattern: "*.swift"
+            outputPath: tempDir.path
         )
         
         // When
@@ -215,8 +212,7 @@ final class SimplifiedCoverageTests: XCTestCase {
         
         let sut = MockGenerator(
             inputPath: tempDir.path,
-            outputPath: tempDir.appendingPathComponent("output").path,
-            filePattern: "*.swift"
+            outputPath: tempDir.appendingPathComponent("output").path
         )
         
         // When & Then (should not throw)
@@ -228,8 +224,7 @@ final class SimplifiedCoverageTests: XCTestCase {
         // Given
         let sut = MockGenerator(
             inputPath: "/completely/nonexistent/path",
-            outputPath: "/also/nonexistent",
-            filePattern: "*.swift"
+            outputPath: "/also/nonexistent"
         )
         
         // When & Then
@@ -278,19 +273,6 @@ final class SimplifiedCoverageTests: XCTestCase {
         }
     }
     
-    func testMockType_whenGettingCommentPrefixes_thenReturnsCorrectFormat() {
-        // Given
-        let testCases: [(MockType, String)] = [
-            (.stub, "// @Stub"),
-            (.spy, "// @Spy"),
-            (.dummy, "// @Dummy")
-        ]
-        
-        // When & Then
-        for (sut, expectedPrefix) in testCases {
-            XCTAssertEqual(sut.commentPrefix, expectedPrefix)
-        }
-    }
     
     // MARK: - CodeElement Reference Semantics SUT Tests
     
@@ -298,13 +280,11 @@ final class SimplifiedCoverageTests: XCTestCase {
         // Given
         let protocolElement = CodeElement.protocol(ProtocolElement(name: "TestProtocol"))
         let classElement = CodeElement.class(ClassElement(name: "TestClass"))
-        let structElement = CodeElement.struct(StructElement(name: "TestStruct"))
         let functionElement = CodeElement.function(FunctionElement(name: "testFunction"))
         
         // When & Then
         XCTAssertTrue(protocolElement.isReference)
         XCTAssertTrue(classElement.isReference)
-        XCTAssertFalse(structElement.isReference)
         XCTAssertFalse(functionElement.isReference)
     }
     
@@ -315,7 +295,6 @@ final class SimplifiedCoverageTests: XCTestCase {
         let name = "ComplexProtocol"
         let methods = [MethodElement(name: "testMethod")]
         let properties = [PropertyElement(name: "testProperty", type: "String")]
-        let associatedTypes = [AssociatedTypeElement(name: "Item")]
         let inheritance = ["ParentProtocol"]
         let accessLevel = AccessLevel.public
         let genericParameters = ["T"]
@@ -325,7 +304,6 @@ final class SimplifiedCoverageTests: XCTestCase {
             name: name,
             methods: methods,
             properties: properties,
-            associatedTypes: associatedTypes,
             inheritance: inheritance,
             accessLevel: accessLevel,
             genericParameters: genericParameters
@@ -335,7 +313,6 @@ final class SimplifiedCoverageTests: XCTestCase {
         XCTAssertEqual(sut.name, name)
         XCTAssertEqual(sut.methods.count, 1)
         XCTAssertEqual(sut.properties.count, 1)
-        XCTAssertEqual(sut.associatedTypes.count, 1)
         XCTAssertEqual(sut.inheritance.count, 1)
         XCTAssertEqual(sut.accessLevel, accessLevel)
         XCTAssertEqual(sut.genericParameters.count, 1)
@@ -375,36 +352,6 @@ final class SimplifiedCoverageTests: XCTestCase {
         XCTAssertTrue(sut.isFinal)
     }
     
-    func testStructElement_whenCreatedWithCompleteData_thenStoresAllProperties() {
-        // Given
-        let name = "ComplexStruct"
-        let methods = [MethodElement(name: "testMethod")]
-        let properties = [PropertyElement(name: "testProperty", type: "String")]
-        let initializers = [InitializerElement()]
-        let inheritance = ["Protocol1"]
-        let accessLevel = AccessLevel.public
-        let genericParameters = ["T"]
-        
-        // When
-        let sut = StructElement(
-            name: name,
-            methods: methods,
-            properties: properties,
-            initializers: initializers,
-            inheritance: inheritance,
-            accessLevel: accessLevel,
-            genericParameters: genericParameters
-        )
-        
-        // Then
-        XCTAssertEqual(sut.name, name)
-        XCTAssertEqual(sut.methods.count, 1)
-        XCTAssertEqual(sut.properties.count, 1)
-        XCTAssertEqual(sut.initializers.count, 1)
-        XCTAssertEqual(sut.inheritance.count, 1)
-        XCTAssertEqual(sut.accessLevel, accessLevel)
-        XCTAssertEqual(sut.genericParameters.count, 1)
-    }
     
     func testFunctionElement_whenCreatedWithCompleteData_thenStoresAllProperties() {
         // Given
@@ -566,24 +513,6 @@ final class SimplifiedCoverageTests: XCTestCase {
         XCTAssertTrue(sut.isThrowing)
     }
     
-    func testAssociatedTypeElement_whenCreatedWithConstraints_thenStoresAllProperties() {
-        // Given
-        let name = "Item"
-        let constraint = "Codable"
-        let defaultType = "String"
-        
-        // When
-        let sut = AssociatedTypeElement(
-            name: name,
-            constraint: constraint,
-            defaultType: defaultType
-        )
-        
-        // Then
-        XCTAssertEqual(sut.name, name)
-        XCTAssertEqual(sut.constraint, constraint)
-        XCTAssertEqual(sut.defaultType, defaultType)
-    }
     
     // MARK: - Error Types SUT Tests
     
@@ -632,22 +561,19 @@ final class SimplifiedCoverageTests: XCTestCase {
         // Given
         let element = ProtocolElement(name: "TestProtocol")
         let location = SourceLocation(line: 1, column: 1, file: "test.swift")
-        let options = ["key": "value"]
         let mockType = MockType.stub
         
         // When
         let sut = MockAnnotation(
             type: mockType,
             element: .protocol(element),
-            location: location,
-            options: options
+            location: location
         )
         
         // Then
         XCTAssertEqual(sut.type, mockType)
         XCTAssertEqual(sut.element.name, "TestProtocol")
         XCTAssertEqual(sut.location.file, "test.swift")
-        XCTAssertEqual(sut.options["key"], "value")
     }
     
     // MARK: - Generator Output Structure SUT Tests
@@ -684,7 +610,6 @@ final class SimplifiedCoverageTests: XCTestCase {
         let testCases: [(CodeElement, String)] = [
             (.protocol(ProtocolElement(name: "TestProtocol")), "TestProtocol"),
             (.class(ClassElement(name: "TestClass")), "TestClass"),
-            (.struct(StructElement(name: "TestStruct")), "TestStruct"),
             (.function(FunctionElement(name: "testFunction")), "testFunction")
         ]
         let sut = StubGenerator()
@@ -712,7 +637,6 @@ final class SimplifiedCoverageTests: XCTestCase {
         let emptyElements: [CodeElement] = [
             .protocol(ProtocolElement(name: "")),
             .class(ClassElement(name: "")),
-            .struct(StructElement(name: "")),
             .function(FunctionElement(name: ""))
         ]
         

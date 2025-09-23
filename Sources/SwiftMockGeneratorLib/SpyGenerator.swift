@@ -12,8 +12,6 @@ public class SpyGenerator: MockGeneratorProtocol {
             return generateProtocolSpy(protocolElement, annotation: annotation)
         case .class(let classElement):
             return generateClassSpy(classElement, annotation: annotation)
-        case .struct(let structElement):
-            return generateStructSpy(structElement, annotation: annotation)
         case .function(let functionElement):
             return generateFunctionSpy(functionElement, annotation: annotation)
         }
@@ -37,52 +35,18 @@ public class SpyGenerator: MockGeneratorProtocol {
         output.append("\(protocolElement.accessLevel.keyword)class \(className)\(genericClause): \(inheritanceClause) {")
         output.append("")
         
-        // Call tracking properties
-        output.append("    // MARK: - Call Tracking")
-        output.append("")
-        
-        for method in protocolElement.methods {
-            output.append("    \(generateCallCountProperty(for: method))")
-        }
-        
-        output.append("")
-        
-        for method in protocolElement.methods {
-            output.append("    \(generateCallParametersProperty(for: method))")
-        }
-        
-        if !protocolElement.methods.isEmpty {
-            output.append("")
-        }
-        
-        // Return value storage for non-void methods
-        let nonVoidMethods = protocolElement.methods.filter { $0.returnType != nil && $0.returnType != "Void" }
-        if !nonVoidMethods.isEmpty {
-            output.append("    // MARK: - Return Values")
-            output.append("")
-            
-            for method in nonVoidMethods {
-                output.append("    \(generateReturnValueProperty(for: method))")
-            }
-            
-            output.append("")
-        }
-        
         // Properties implementation
         for property in protocolElement.properties {
             output.append("    \(generateSpyProperty(property))")
         }
         
-        if !protocolElement.properties.isEmpty && !protocolElement.methods.isEmpty {
+        if !protocolElement.properties.isEmpty {
             output.append("")
         }
         
         // Initializer
         output.append("    \(protocolElement.accessLevel.keyword)init() {}")
-        
-        if !protocolElement.methods.isEmpty {
-            output.append("")
-        }
+        output.append("")
         
         // Reset method
         output.append("    // MARK: - Reset")
@@ -94,17 +58,29 @@ public class SpyGenerator: MockGeneratorProtocol {
         }
         
         output.append("    }")
-        output.append("")
         
-        // Methods implementation
-        output.append("    // MARK: - Method Implementations")
-        output.append("")
-        
+        // Methods implementation with tracking variables above each method
         for method in protocolElement.methods {
-            output.append("    \(generateSpyMethod(method))")
             output.append("")
+            output.append("    // MARK: - \(method.name)")
+            output.append("    \(generateCallCountProperty(for: method))")
+            output.append("    \(generateCallParametersProperty(for: method))")
+            
+            // Add return value property if method has return type
+            if let returnType = method.returnType, returnType != "Void" {
+                output.append("    \(generateReturnValueProperty(for: method))")
+            }
+            
+            // Add throw error property if method can throw
+            if method.isThrowing {
+                output.append("    \(generateThrowErrorProperty(for: method))")
+            }
+            
+            output.append("")
+            output.append("    \(generateSpyMethod(method))")
         }
         
+        output.append("")
         output.append("}")
         
         return output.joined(separator: "\n")
@@ -127,37 +103,6 @@ public class SpyGenerator: MockGeneratorProtocol {
         
         output.append("\(classElement.accessLevel.keyword)class \(className)\(genericClause): \(inheritanceClause) {")
         output.append("")
-        
-        // Call tracking properties
-        output.append("    // MARK: - Call Tracking")
-        output.append("")
-        
-        for method in classElement.methods {
-            output.append("    \(generateCallCountProperty(for: method))")
-        }
-        
-        output.append("")
-        
-        for method in classElement.methods {
-            output.append("    \(generateCallParametersProperty(for: method))")
-        }
-        
-        if !classElement.methods.isEmpty {
-            output.append("")
-        }
-        
-        // Return value storage
-        let nonVoidMethods = classElement.methods.filter { $0.returnType != nil && $0.returnType != "Void" }
-        if !nonVoidMethods.isEmpty {
-            output.append("    // MARK: - Return Values")
-            output.append("")
-            
-            for method in nonVoidMethods {
-                output.append("    \(generateReturnValueProperty(for: method))")
-            }
-            
-            output.append("")
-        }
         
         // Initializers
         if !classElement.initializers.isEmpty {
@@ -182,112 +127,34 @@ public class SpyGenerator: MockGeneratorProtocol {
         }
         
         output.append("    }")
-        output.append("")
         
-        // Override methods
-        output.append("    // MARK: - Method Overrides")
-        output.append("")
-        
+        // Override methods with tracking variables above each method
         for method in classElement.methods {
-            output.append("    \(generateSpyMethodOverride(method))")
             output.append("")
-        }
-        
-        output.append("}")
-        
-        return output.joined(separator: "\n")
-    }
-    
-    // MARK: - Struct Spy Generation
-    
-    private func generateStructSpy(_ structElement: StructElement, annotation: MockAnnotation) -> String {
-        var output = [String]()
-        
-        // Header comment
-        output.append("// MARK: - Generated Spy for \(structElement.name)")
-        output.append("// Generated by SwiftMockGenerator")
-        output.append("")
-        
-        // Class declaration (spies for structs are typically classes for reference semantics)
-        let className = "\(structElement.name)Spy"
-        let genericClause = structElement.genericParameters.isEmpty ? "" : "<\(structElement.genericParameters.joined(separator: ", "))>"
-        let inheritanceClause = structElement.inheritance.isEmpty ? "" : ": \(structElement.inheritance.joined(separator: ", "))"
-        
-        output.append("\(structElement.accessLevel.keyword)class \(className)\(genericClause)\(inheritanceClause) {")
-        output.append("")
-        
-        // Call tracking properties
-        output.append("    // MARK: - Call Tracking")
-        output.append("")
-        
-        for method in structElement.methods {
+            output.append("    // MARK: - \(method.name)")
             output.append("    \(generateCallCountProperty(for: method))")
-        }
-        
-        output.append("")
-        
-        for method in structElement.methods {
             output.append("    \(generateCallParametersProperty(for: method))")
-        }
-        
-        if !structElement.methods.isEmpty {
-            output.append("")
-        }
-        
-        // Return value storage
-        let nonVoidMethods = structElement.methods.filter { $0.returnType != nil && $0.returnType != "Void" }
-        if !nonVoidMethods.isEmpty {
-            output.append("    // MARK: - Return Values")
-            output.append("")
             
-            for method in nonVoidMethods {
+            // Add return value property if method has return type
+            if let returnType = method.returnType, returnType != "Void" {
                 output.append("    \(generateReturnValueProperty(for: method))")
             }
             
+            // Add throw error property if method can throw
+            if method.isThrowing {
+                output.append("    \(generateThrowErrorProperty(for: method))")
+            }
+            
             output.append("")
+            output.append("    \(generateSpyMethodOverride(method))")
         }
         
-        // Properties
-        for property in structElement.properties {
-            output.append("    \(generateSpyProperty(property))")
-        }
-        
-        if !structElement.properties.isEmpty && !structElement.methods.isEmpty {
-            output.append("")
-        }
-        
-        // Initializer
-        output.append("    \(structElement.accessLevel.keyword)init() {}")
-        
-        if !structElement.methods.isEmpty {
-            output.append("")
-        }
-        
-        // Reset method
-        output.append("    // MARK: - Reset")
-        output.append("    \(structElement.accessLevel.keyword)func resetSpy() {")
-        
-        for method in structElement.methods {
-            output.append("        \(method.name)CallCount = 0")
-            output.append("        \(method.name)CallParameters = []")
-        }
-        
-        output.append("    }")
         output.append("")
-        
-        // Methods implementation
-        output.append("    // MARK: - Method Implementations")
-        output.append("")
-        
-        for method in structElement.methods {
-            output.append("    \(generateSpyMethod(method))")
-            output.append("")
-        }
-        
         output.append("}")
         
         return output.joined(separator: "\n")
     }
+    
     
     // MARK: - Function Spy Generation
     
@@ -365,7 +232,7 @@ public class SpyGenerator: MockGeneratorProtocol {
     
     private func generateCallParametersProperty(for method: MethodElement) -> String {
         if method.parameters.isEmpty {
-            return "// No parameters for \(method.name)"
+            return "private(set) var \(method.name)CallParameters: [Void] = []"
         }
         
         let tupleType = generateParameterTupleType(method.parameters)
@@ -375,6 +242,11 @@ public class SpyGenerator: MockGeneratorProtocol {
     private func generateReturnValueProperty(for method: MethodElement) -> String {
         guard let returnType = method.returnType, returnType != "Void" else { return "" }
         return "var \(method.name)ReturnValue: \(returnType) = \(generateDefaultValue(for: returnType))"
+    }
+    
+    private func generateThrowErrorProperty(for method: MethodElement) -> String {
+        guard method.isThrowing else { return "" }
+        return "var \(method.name)ThrowError: Error?"
     }
     
     private func generateSpyProperty(_ property: PropertyElement) -> String {
@@ -394,9 +266,16 @@ public class SpyGenerator: MockGeneratorProtocol {
         
         body.append("\(method.name)CallCount += 1")
         
-        if !method.parameters.isEmpty {
+        if method.parameters.isEmpty {
+            body.append("\(method.name)CallParameters.append(())")
+        } else {
             let parameterNames = method.parameters.map { $0.internalName }
             body.append("\(method.name)CallParameters.append((\(parameterNames.joined(separator: ", "))))")
+        }
+        
+        // Throw error if configured
+        if method.isThrowing {
+            body.append("if let error = \(method.name)ThrowError { throw error }")
         }
         
         if let returnType = method.returnType, returnType != "Void" {
@@ -413,9 +292,16 @@ public class SpyGenerator: MockGeneratorProtocol {
         
         body.append("\(method.name)CallCount += 1")
         
-        if !method.parameters.isEmpty {
+        if method.parameters.isEmpty {
+            body.append("\(method.name)CallParameters.append(())")
+        } else {
             let parameterNames = method.parameters.map { $0.internalName }
             body.append("\(method.name)CallParameters.append((\(parameterNames.joined(separator: ", "))))")
+        }
+        
+        // Throw error if configured
+        if method.isThrowing {
+            body.append("if let error = \(method.name)ThrowError { throw error }")
         }
         
         if let returnType = method.returnType, returnType != "Void" {
