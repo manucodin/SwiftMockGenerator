@@ -35,3 +35,4 @@ ignore:
   - "README.md"
   - "LICENSE"
   - "Makefile"
+  - "coverage.lcov"
