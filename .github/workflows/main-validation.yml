@@ -1,8 +1,9 @@
-name: PR Validation
+name: Main Branch Coverage
 
 on:
   pull_request:
-    branches: [develop]
+    types: [closed]
+    branches: [main]
 
 jobs:
   test:
@@ -10,25 +11,15 @@ jobs:
     runs-on: ${{ matrix.os }}
     
     strategy:
-      matrix:
-        include:
-          # Latest stable versions
-          - os: macos-14
-            xcode: '15.4'
-            swift: '5.10'
-          - os: macos-14
-            xcode: '15.3'
-            swift: '5.10'
-          # Previous stable versions for compatibility
-          - os: macos-13
-            xcode: '15.2'
-            swift: '5.9'
-          - os: macos-13
-            xcode: '15.1'
-            swift: '5.9'
-      
-      fail-fast: false
-    
+        matrix:
+          include:
+            # Latest stable versions
+            - os: macos-14
+              xcode: '15.4'
+              swift: '5.10'
+        
+        fail-fast: false
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -113,33 +104,5 @@ jobs:
           file: coverage.lcov
           fail_ci_if_error: false
           verbose: true
-          
-      - name: Build executable
-        run: swift build --configuration release --product swift-mock-generator
-        
-      - name: Test executable functionality
-        run: |
-          # Build the executable and test basic functionality
-          .build/release/swift-mock-generator --help
-          
-          # Test with example files if they exist
-          if [ -f "Examples/Sources/DataRepository.swift" ]; then
-            echo "Testing with example files..."
-            .build/release/swift-mock-generator --input Examples/Sources --output /tmp/test_output
-            if [ -d "/tmp/test_output" ] && [ "$(ls -A /tmp/test_output)" ]; then
-              echo "✅ Mock generation successful"
-              echo "Generated files:"
-              ls -la /tmp/test_output
-              echo "Sample content from first generated file:"
-              first_file=$(ls /tmp/test_output/*.swift 2>/dev/null | head -1)
-              if [ -n "$first_file" ]; then
-                echo "Content from: $(basename "$first_file")"
-                head -20 "$first_file"
-              else
-                echo "No .swift files found in output directory"
-              fi
-            else
-              echo "❌ Mock generation failed - no files generated"
-              exit 1
-            fi
-          fi
+          flags: main
+          name: main-coverage
