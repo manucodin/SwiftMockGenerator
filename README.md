@@ -1,5 +1,6 @@
 # SwiftMockGenerator
 
+[![codecov](https://codecov.io/github/manucodin/SwiftMockGenerator/graph/badge.svg?token=FMYJFEKMEY)](https://codecov.io/github/manucodin/SwiftMockGenerator)
 [![Swift](https://img.shields.io/badge/Swift-5.9+-orange.svg)](https://swift.org)
 [![macOS](https://img.shields.io/badge/macOS-12+-blue.svg)](https://www.apple.com/macos)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
