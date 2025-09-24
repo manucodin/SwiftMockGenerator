@@ -2,8 +2,7 @@ name: Main Branch Coverage
 
 on:
   pull_request:
-    branches: [main]
-  push:
+    types: [closed]
     branches: [main]
 
 jobs:
@@ -105,3 +104,5 @@ jobs:
           file: coverage.lcov
           fail_ci_if_error: false
           verbose: true
+          flags: main
+          name: main-coverage
