@@ -87,9 +87,12 @@ jobs:
             exit 1
           fi
           
-          TEST_EXECUTABLE=$(find "$TEST_XCTEST_DIR/Contents/MacOS" -type f | head -1)
+          # Look for the main executable (exclude dSYM directories and other files)
+          TEST_EXECUTABLE=$(find "$TEST_XCTEST_DIR/Contents/MacOS" -type f -maxdepth 1 ! -name "*.dSYM" ! -name "*.yml" ! -name "*.plist" | head -1)
           if [ -z "$TEST_EXECUTABLE" ] || [ ! -f "$TEST_EXECUTABLE" ]; then
             echo "No test executable found in $TEST_XCTEST_DIR/Contents/MacOS"
+            echo "Available files:"
+            ls -la "$TEST_XCTEST_DIR/Contents/MacOS/"
             exit 1
           fi
           
