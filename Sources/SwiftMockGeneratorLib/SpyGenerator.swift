@@ -17,6 +17,13 @@ public class SpyGenerator: MockGeneratorProtocol {
         }
     }
     
+    public func generateMockDefinition(for element: CodeElement, annotation: MockAnnotation) throws -> String {
+        // Get the full mock code and remove the header (first 2 lines)
+        let fullMock = try generateMock(for: element, annotation: annotation)
+        let lines = fullMock.components(separatedBy: .newlines)
+        return lines.dropFirst(2).joined(separator: "\n")
+    }
+    
     // MARK: - Protocol Spy Generation
     
     private func generateProtocolSpy(_ protocolElement: ProtocolElement, annotation: MockAnnotation) -> String {
