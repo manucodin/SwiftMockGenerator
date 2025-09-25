@@ -6,27 +6,27 @@ import Foundation
 public class SpyGenerator: MockGeneratorProtocol {
     public init() {}
     
-    public func generateMock(for element: CodeElement, annotation: MockAnnotation) throws -> String {
+    public func generateMock(for element: CodeElement, annotation: MockAnnotation, useResult: Bool = false) throws -> String {
         switch element {
         case .protocol(let protocolElement):
-            return generateProtocolSpy(protocolElement, annotation: annotation)
+            return generateProtocolSpy(protocolElement, annotation: annotation, useResult: useResult)
         case .class(let classElement):
-            return generateClassSpy(classElement, annotation: annotation)
+            return generateClassSpy(classElement, annotation: annotation, useResult: useResult)
         case .function(let functionElement):
-            return generateFunctionSpy(functionElement, annotation: annotation)
+            return generateFunctionSpy(functionElement, annotation: annotation, useResult: useResult)
         }
     }
     
-    public func generateMockDefinition(for element: CodeElement, annotation: MockAnnotation) throws -> String {
+    public func generateMockDefinition(for element: CodeElement, annotation: MockAnnotation, useResult: Bool = false) throws -> String {
         // Get the full mock code and remove the header (first 2 lines)
-        let fullMock = try generateMock(for: element, annotation: annotation)
+        let fullMock = try generateMock(for: element, annotation: annotation, useResult: useResult)
         let lines = fullMock.components(separatedBy: .newlines)
         return lines.dropFirst(2).joined(separator: "\n")
     }
     
     // MARK: - Protocol Spy Generation
     
-    private func generateProtocolSpy(_ protocolElement: ProtocolElement, annotation: MockAnnotation) -> String {
+    private func generateProtocolSpy(_ protocolElement: ProtocolElement, annotation: MockAnnotation, useResult: Bool = false) -> String {
         var output = [String]()
         
         // Header comment
@@ -38,8 +38,9 @@ public class SpyGenerator: MockGeneratorProtocol {
         let className = "\(protocolElement.name)Spy"
         let genericClause = protocolElement.genericParameters.isEmpty ? "" : "<\(protocolElement.genericParameters.joined(separator: ", "))>"
         let inheritanceClause = protocolElement.inheritance.isEmpty ? protocolElement.name : "\(protocolElement.name), \(protocolElement.inheritance.joined(separator: ", "))"
+        let sendableAttribute = protocolElement.isSendable ? "@unchecked Sendable " : ""
         
-        output.append("\(protocolElement.accessLevel.keyword)class \(className)\(genericClause): \(inheritanceClause) {")
+        output.append("\(protocolElement.accessLevel.keyword)\(sendableAttribute)class \(className)\(genericClause): \(inheritanceClause) {")
         output.append("")
         
         // Properties implementation
@@ -75,16 +76,16 @@ public class SpyGenerator: MockGeneratorProtocol {
             
             // Add return value property if method has return type
             if let returnType = method.returnType, returnType != "Void" {
-                output.append("    \(generateReturnValueProperty(for: method))")
+                output.append("    \(generateReturnValueProperty(for: method, useResult: useResult))")
             }
             
-            // Add throw error property if method can throw
-            if method.isThrowing {
+            // Add throw error property if method can throw (only if not using Result)
+            if method.isThrowing && !(useResult && method.isAsync) {
                 output.append("    \(generateThrowErrorProperty(for: method))")
             }
             
             output.append("")
-            output.append("    \(generateSpyMethod(method))")
+            output.append("    \(generateSpyMethod(method, useResult: useResult))")
         }
         
         output.append("")
@@ -95,7 +96,7 @@ public class SpyGenerator: MockGeneratorProtocol {
     
     // MARK: - Class Spy Generation
     
-    private func generateClassSpy(_ classElement: ClassElement, annotation: MockAnnotation) -> String {
+    private func generateClassSpy(_ classElement: ClassElement, annotation: MockAnnotation, useResult: Bool = false) -> String {
         var output = [String]()
         
         // Header comment
@@ -107,8 +108,9 @@ public class SpyGenerator: MockGeneratorProtocol {
         let className = "\(classElement.name)Spy"
         let genericClause = classElement.genericParameters.isEmpty ? "" : "<\(classElement.genericParameters.joined(separator: ", "))>"
         let inheritanceClause = classElement.inheritance.isEmpty ? classElement.name : "\(classElement.name), \(classElement.inheritance.joined(separator: ", "))"
+        let sendableAttribute = classElement.isSendable ? "@unchecked Sendable " : ""
         
-        output.append("\(classElement.accessLevel.keyword)class \(className)\(genericClause): \(inheritanceClause) {")
+        output.append("\(classElement.accessLevel.keyword)\(sendableAttribute)class \(className)\(genericClause): \(inheritanceClause) {")
         output.append("")
         
         // Initializers
@@ -144,16 +146,16 @@ public class SpyGenerator: MockGeneratorProtocol {
             
             // Add return value property if method has return type
             if let returnType = method.returnType, returnType != "Void" {
-                output.append("    \(generateReturnValueProperty(for: method))")
+                output.append("    \(generateReturnValueProperty(for: method, useResult: useResult))")
             }
             
-            // Add throw error property if method can throw
-            if method.isThrowing {
+            // Add throw error property if method can throw (only if not using Result)
+            if method.isThrowing && !(useResult && method.isAsync) {
                 output.append("    \(generateThrowErrorProperty(for: method))")
             }
             
             output.append("")
-            output.append("    \(generateSpyMethodOverride(method))")
+            output.append("    \(generateSpyMethodOverride(method, useResult: useResult))")
         }
         
         output.append("")
@@ -165,7 +167,7 @@ public class SpyGenerator: MockGeneratorProtocol {
     
     // MARK: - Function Spy Generation
     
-    private func generateFunctionSpy(_ function: FunctionElement, annotation: MockAnnotation) -> String {
+    private func generateFunctionSpy(_ function: FunctionElement, annotation: MockAnnotation, useResult: Bool = false) -> String {
         var output = [String]()
         
         // Header comment
@@ -190,7 +192,11 @@ public class SpyGenerator: MockGeneratorProtocol {
         if let returnType = function.returnType, returnType != "Void" {
             output.append("")
             output.append("    // MARK: - Return Value")
-            output.append("    var returnValue: \(returnType) = \(generateDefaultValue(for: returnType))")
+            if useResult && function.isAsync {
+                output.append("    var returnValue: Result<\(returnType), Error> = .success(\(generateDefaultValue(for: returnType)))")
+            } else {
+                output.append("    var returnValue: \(returnType) = \(generateDefaultValue(for: returnType))")
+            }
         }
         
         output.append("")
@@ -210,7 +216,7 @@ public class SpyGenerator: MockGeneratorProtocol {
         
         // Call method
         let functionName = function.name
-        let signature = generateSpyFunctionSignature(function, name: "call\(functionName.capitalized)")
+        let signature = generateSpyFunctionSignature(function, name: "call\(functionName.capitalized)", useResult: useResult)
         
         output.append("    \(signature) {")
         output.append("        callCount += 1")
@@ -221,7 +227,11 @@ public class SpyGenerator: MockGeneratorProtocol {
         }
         
         if let returnType = function.returnType, returnType != "Void" {
-            output.append("        return returnValue")
+            if useResult && function.isAsync {
+                output.append("        return try returnValue.get()")
+            } else {
+                output.append("        return returnValue")
+            }
         }
         
         output.append("    }")
@@ -246,9 +256,15 @@ public class SpyGenerator: MockGeneratorProtocol {
         return "private(set) var \(method.name)CallParameters: [(\(tupleType))] = []"
     }
     
-    private func generateReturnValueProperty(for method: MethodElement) -> String {
+    private func generateReturnValueProperty(for method: MethodElement, useResult: Bool = false) -> String {
         guard let returnType = method.returnType, returnType != "Void" else { return "" }
-        return "var \(method.name)ReturnValue: \(returnType) = \(generateDefaultValue(for: returnType))"
+        
+        if useResult && method.isAsync {
+            // For async methods with useResult, the return type should be Result<T, Error>
+            return "var \(method.name)ReturnValue: Result<\(returnType), Error> = .success(\(generateDefaultValue(for: returnType)))"
+        } else {
+            return "var \(method.name)ReturnValue: \(returnType) = \(generateDefaultValue(for: returnType))"
+        }
     }
     
     private func generateThrowErrorProperty(for method: MethodElement) -> String {
@@ -267,8 +283,8 @@ public class SpyGenerator: MockGeneratorProtocol {
         }
     }
     
-    private func generateSpyMethod(_ method: MethodElement) -> String {
-        let signature = generateMethodSignature(method, isMutable: method.isMutating)
+    private func generateSpyMethod(_ method: MethodElement, useResult: Bool = false) -> String {
+        let signature = generateMethodSignature(method, isMutable: method.isMutating, useResult: useResult)
         var body = [String]()
         
         body.append("\(method.name)CallCount += 1")
@@ -280,21 +296,28 @@ public class SpyGenerator: MockGeneratorProtocol {
             body.append("\(method.name)CallParameters.append((\(parameterNames.joined(separator: ", "))))")
         }
         
-        // Throw error if configured
-        if method.isThrowing {
-            body.append("if let error = \(method.name)ThrowError { throw error }")
-        }
-        
         if let returnType = method.returnType, returnType != "Void" {
-            body.append("return \(method.name)ReturnValue")
+            if useResult && method.isAsync {
+                // For async methods with useResult, unwrap the Result and return the value
+                body.append("return try \(method.name)ReturnValue.get()")
+            } else {
+                // Throw error if configured (only for non-Result methods)
+                if method.isThrowing {
+                    body.append("if let error = \(method.name)ThrowError { throw error }")
+                }
+                body.append("return \(method.name)ReturnValue")
+            }
+        } else if method.isThrowing && !(useResult && method.isAsync) {
+            // For void methods that can throw (and not using Result)
+            body.append("if let error = \(method.name)ThrowError { throw error }")
         }
         
         let bodyString = body.joined(separator: "\n        ")
         return "\(signature) {\n        \(bodyString)\n    }"
     }
     
-    private func generateSpyMethodOverride(_ method: MethodElement) -> String {
-        let signature = generateMethodOverrideSignature(method)
+    private func generateSpyMethodOverride(_ method: MethodElement, useResult: Bool = false) -> String {
+        let signature = generateMethodOverrideSignature(method, useResult: useResult)
         var body = [String]()
         
         body.append("\(method.name)CallCount += 1")
@@ -306,13 +329,20 @@ public class SpyGenerator: MockGeneratorProtocol {
             body.append("\(method.name)CallParameters.append((\(parameterNames.joined(separator: ", "))))")
         }
         
-        // Throw error if configured
-        if method.isThrowing {
-            body.append("if let error = \(method.name)ThrowError { throw error }")
-        }
-        
         if let returnType = method.returnType, returnType != "Void" {
-            body.append("return \(method.name)ReturnValue")
+            if useResult && method.isAsync {
+                // For async methods with useResult, unwrap the Result and return the value
+                body.append("return try \(method.name)ReturnValue.get()")
+            } else {
+                // Throw error if configured (only for non-Result methods)
+                if method.isThrowing {
+                    body.append("if let error = \(method.name)ThrowError { throw error }")
+                }
+                body.append("return \(method.name)ReturnValue")
+            }
+        } else if method.isThrowing && !(useResult && method.isAsync) {
+            // For void methods that can throw (and not using Result)
+            body.append("if let error = \(method.name)ThrowError { throw error }")
         }
         
         let bodyString = body.joined(separator: "\n        ")
@@ -341,34 +371,40 @@ public class SpyGenerator: MockGeneratorProtocol {
         return types.joined(separator: ", ")
     }
     
-    private func generateMethodSignature(_ method: MethodElement, isMutable: Bool = false) -> String {
+    private func generateMethodSignature(_ method: MethodElement, isMutable: Bool = false, useResult: Bool = false) -> String {
         let accessLevel = method.accessLevel.keyword
         let staticKeyword = method.isStatic ? "static " : ""
         let mutatingKeyword = isMutable ? "mutating " : ""
         let asyncKeyword = method.isAsync ? " async" : ""
         let throwsKeyword = method.isThrowing ? " throws" : ""
         let parameters = generateParameterList(method.parameters)
+        
+        // Always keep the original signature - only change the returnValue type
         let returnClause = method.returnType.map { " -> \($0)" } ?? ""
         
         return "\(accessLevel)\(staticKeyword)\(mutatingKeyword)func \(method.name)(\(parameters))\(asyncKeyword)\(throwsKeyword)\(returnClause)"
     }
     
-    private func generateMethodOverrideSignature(_ method: MethodElement) -> String {
+    private func generateMethodOverrideSignature(_ method: MethodElement, useResult: Bool = false) -> String {
         let accessLevel = method.accessLevel.keyword
         let staticKeyword = method.isStatic ? "static " : ""
         let asyncKeyword = method.isAsync ? " async" : ""
         let throwsKeyword = method.isThrowing ? " throws" : ""
         let parameters = generateParameterList(method.parameters)
+        
+        // Always keep the original signature - only change the returnValue type
         let returnClause = method.returnType.map { " -> \($0)" } ?? ""
         
         return "\(accessLevel)override \(staticKeyword)func \(method.name)(\(parameters))\(asyncKeyword)\(throwsKeyword)\(returnClause)"
     }
     
-    private func generateSpyFunctionSignature(_ function: FunctionElement, name: String) -> String {
+    private func generateSpyFunctionSignature(_ function: FunctionElement, name: String, useResult: Bool = false) -> String {
         let accessLevel = function.accessLevel.keyword
         let asyncKeyword = function.isAsync ? " async" : ""
         let throwsKeyword = function.isThrowing ? " throws" : ""
         let parameters = generateParameterList(function.parameters)
+        
+        // Always keep the original signature - only change the returnValue type
         let returnClause = function.returnType.map { " -> \($0)" } ?? ""
         
         return "\(accessLevel)func \(name)(\(parameters))\(asyncKeyword)\(throwsKeyword)\(returnClause)"

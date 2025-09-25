@@ -552,7 +552,7 @@ final class FinalCoverageBoostTests: XCTestCase {
                     location: SourceLocation(line: 1, column: 1, file: "test.swift")
                 )
                 
-                let result = try sut.generateMock(for: element, annotation: annotation)
+                let result = try sut.generateMock(for: element, annotation: annotation, useResult: false)
                 
                 XCTAssertFalse(result.isEmpty)
                 XCTAssertTrue(result.contains(element.name))
@@ -589,7 +589,7 @@ final class FinalCoverageBoostTests: XCTestCase {
                     location: SourceLocation(line: 1, column: 1, file: "test.swift")
                 )
                 
-                let result = try sut.generateMock(for: element, annotation: annotation)
+                let result = try sut.generateMock(for: element, annotation: annotation, useResult: false)
                 XCTAssertFalse(result.isEmpty)
             }
         }

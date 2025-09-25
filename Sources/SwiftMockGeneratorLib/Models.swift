@@ -73,15 +73,17 @@ public struct ProtocolElement {
     let inheritance: [String]
     let accessLevel: AccessLevel
     let genericParameters: [String]
+    let isSendable: Bool
     
     public init(name: String, methods: [MethodElement] = [], properties: [PropertyElement] = [],
-                inheritance: [String] = [], accessLevel: AccessLevel = .internal, genericParameters: [String] = []) {
+                inheritance: [String] = [], accessLevel: AccessLevel = .internal, genericParameters: [String] = [], isSendable: Bool = false) {
         self.name = name
         self.methods = methods
         self.properties = properties
         self.inheritance = inheritance
         self.accessLevel = accessLevel
         self.genericParameters = genericParameters
+        self.isSendable = isSendable
     }
 }
 
@@ -95,10 +97,11 @@ public struct ClassElement {
     let accessLevel: AccessLevel
     let genericParameters: [String]
     let isFinal: Bool
+    let isSendable: Bool
     
     public init(name: String, methods: [MethodElement] = [], properties: [PropertyElement] = [],
                 initializers: [InitializerElement] = [], inheritance: [String] = [],
-                accessLevel: AccessLevel = .internal, genericParameters: [String] = [], isFinal: Bool = false) {
+                accessLevel: AccessLevel = .internal, genericParameters: [String] = [], isFinal: Bool = false, isSendable: Bool = false) {
         self.name = name
         self.methods = methods
         self.properties = properties
@@ -107,6 +110,7 @@ public struct ClassElement {
         self.accessLevel = accessLevel
         self.genericParameters = genericParameters
         self.isFinal = isFinal
+        self.isSendable = isSendable
     }
 }
 

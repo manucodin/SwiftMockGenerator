@@ -4,8 +4,8 @@ import Foundation
 
 /// Protocol for different types of mock generators
 public protocol MockGeneratorProtocol {
-    func generateMock(for element: CodeElement, annotation: MockAnnotation) throws -> String
-    func generateMockDefinition(for element: CodeElement, annotation: MockAnnotation) throws -> String
+    func generateMock(for element: CodeElement, annotation: MockAnnotation, useResult: Bool) throws -> String
+    func generateMockDefinition(for element: CodeElement, annotation: MockAnnotation, useResult: Bool) throws -> String
 }
 
 // MARK: - Stub Generator
@@ -14,27 +14,27 @@ public protocol MockGeneratorProtocol {
 public class StubGenerator: MockGeneratorProtocol {
     public init() {}
     
-    public func generateMock(for element: CodeElement, annotation: MockAnnotation) throws -> String {
+    public func generateMock(for element: CodeElement, annotation: MockAnnotation, useResult: Bool = false) throws -> String {
         switch element {
         case .protocol(let protocolElement):
-            return generateProtocolStub(protocolElement, annotation: annotation)
+            return generateProtocolStub(protocolElement, annotation: annotation, useResult: useResult)
         case .class(let classElement):
-            return generateClassStub(classElement, annotation: annotation)
+            return generateClassStub(classElement, annotation: annotation, useResult: useResult)
         case .function(let functionElement):
-            return generateFunctionStub(functionElement, annotation: annotation)
+            return generateFunctionStub(functionElement, annotation: annotation, useResult: useResult)
         }
     }
     
-    public func generateMockDefinition(for element: CodeElement, annotation: MockAnnotation) throws -> String {
+    public func generateMockDefinition(for element: CodeElement, annotation: MockAnnotation, useResult: Bool = false) throws -> String {
         // Get the full mock code and remove the header (first 2 lines)
-        let fullMock = try generateMock(for: element, annotation: annotation)
+        let fullMock = try generateMock(for: element, annotation: annotation, useResult: useResult)
         let lines = fullMock.components(separatedBy: .newlines)
         return lines.dropFirst(2).joined(separator: "\n")
     }
     
     // MARK: - Protocol Stub Generation
     
-    private func generateProtocolStub(_ protocolElement: ProtocolElement, annotation: MockAnnotation) -> String {
+    private func generateProtocolStub(_ protocolElement: ProtocolElement, annotation: MockAnnotation, useResult: Bool = false) -> String {
         var output = [String]()
         
         // Header comment
@@ -46,8 +46,9 @@ public class StubGenerator: MockGeneratorProtocol {
         let className = "\(protocolElement.name)Stub"
         let genericClause = protocolElement.genericParameters.isEmpty ? "" : "<\(protocolElement.genericParameters.joined(separator: ", "))>"
         let inheritanceClause = protocolElement.inheritance.isEmpty ? protocolElement.name : "\(protocolElement.name), \(protocolElement.inheritance.joined(separator: ", "))"
+        let sendableAttribute = protocolElement.isSendable ? "@unchecked Sendable " : ""
         
-        output.append("\(protocolElement.accessLevel.keyword)class \(className)\(genericClause): \(inheritanceClause) {")
+        output.append("\(protocolElement.accessLevel.keyword)\(sendableAttribute)class \(className)\(genericClause): \(inheritanceClause) {")
         output.append("")
         
         // Properties
@@ -62,13 +63,26 @@ public class StubGenerator: MockGeneratorProtocol {
         // Initializer
         output.append("    \(protocolElement.accessLevel.keyword)init() {}")
         
+        // Generate return value properties for async methods when using useResult
+        if useResult {
+            let hasAsyncMethods = protocolElement.methods.contains { $0.isAsync && $0.returnType != nil && $0.returnType != "Void" }
+            if hasAsyncMethods {
+                output.append("")
+                for method in protocolElement.methods {
+                    if let returnValueProperty = generateReturnValueProperty(method, useResult: useResult) {
+                        output.append("    \(returnValueProperty)")
+                    }
+                }
+            }
+        }
+        
         if !protocolElement.methods.isEmpty {
             output.append("")
         }
         
         // Methods
         for method in protocolElement.methods {
-            output.append("    \(generateMethodStub(method))")
+            output.append("    \(generateMethodStub(method, useResult: useResult))")
             output.append("")
         }
         
@@ -77,15 +91,16 @@ public class StubGenerator: MockGeneratorProtocol {
         return output.joined(separator: "\n")
     }
     
-    private func generateProtocolStubDefinition(_ protocolElement: ProtocolElement, annotation: MockAnnotation) -> String {
+    private func generateProtocolStubDefinition(_ protocolElement: ProtocolElement, annotation: MockAnnotation, useResult: Bool = false) -> String {
         var output = [String]()
         
         // Class declaration (without header)
         let className = "\(protocolElement.name)Stub"
         let genericClause = protocolElement.genericParameters.isEmpty ? "" : "<\(protocolElement.genericParameters.joined(separator: ", "))>"
         let inheritanceClause = protocolElement.inheritance.isEmpty ? protocolElement.name : "\(protocolElement.name), \(protocolElement.inheritance.joined(separator: ", "))"
+        let sendableAttribute = protocolElement.isSendable ? "@unchecked Sendable " : ""
         
-        output.append("\(protocolElement.accessLevel.keyword)class \(className)\(genericClause): \(inheritanceClause) {")
+        output.append("\(protocolElement.accessLevel.keyword)\(sendableAttribute)class \(className)\(genericClause): \(inheritanceClause) {")
         output.append("")
         
         // Properties
@@ -100,13 +115,26 @@ public class StubGenerator: MockGeneratorProtocol {
         // Initializer
         output.append("    \(protocolElement.accessLevel.keyword)init() {}")
         
+        // Generate return value properties for async methods when using useResult
+        if useResult {
+            let hasAsyncMethods = protocolElement.methods.contains { $0.isAsync && $0.returnType != nil && $0.returnType != "Void" }
+            if hasAsyncMethods {
+                output.append("")
+                for method in protocolElement.methods {
+                    if let returnValueProperty = generateReturnValueProperty(method, useResult: useResult) {
+                        output.append("    \(returnValueProperty)")
+                    }
+                }
+            }
+        }
+        
         if !protocolElement.methods.isEmpty {
             output.append("")
         }
         
         // Methods
         for method in protocolElement.methods {
-            output.append("    \(generateMethodStub(method))")
+            output.append("    \(generateMethodStub(method, useResult: useResult))")
             output.append("")
         }
         
@@ -117,7 +145,7 @@ public class StubGenerator: MockGeneratorProtocol {
     
     // MARK: - Class Stub Generation
     
-    private func generateClassStub(_ classElement: ClassElement, annotation: MockAnnotation) -> String {
+    private func generateClassStub(_ classElement: ClassElement, annotation: MockAnnotation, useResult: Bool = false) -> String {
         var output = [String]()
         
         // Header comment
@@ -129,8 +157,9 @@ public class StubGenerator: MockGeneratorProtocol {
         let className = "\(classElement.name)Stub"
         let genericClause = classElement.genericParameters.isEmpty ? "" : "<\(classElement.genericParameters.joined(separator: ", "))>"
         let inheritanceClause = classElement.inheritance.isEmpty ? classElement.name : "\(classElement.name), \(classElement.inheritance.joined(separator: ", "))"
+        let sendableAttribute = classElement.isSendable ? "@unchecked Sendable " : ""
         
-        output.append("\(classElement.accessLevel.keyword)class \(className)\(genericClause): \(inheritanceClause) {")
+        output.append("\(classElement.accessLevel.keyword)\(sendableAttribute)class \(className)\(genericClause): \(inheritanceClause) {")
         output.append("")
         
         // Override properties if needed
@@ -155,9 +184,22 @@ public class StubGenerator: MockGeneratorProtocol {
             output.append("")
         }
         
+        // Generate return value properties for async methods when using useResult
+        if useResult {
+            let hasAsyncMethods = classElement.methods.contains { $0.isAsync && $0.returnType != nil && $0.returnType != "Void" }
+            if hasAsyncMethods {
+                output.append("")
+                for method in classElement.methods {
+                    if let returnValueProperty = generateReturnValueProperty(method, useResult: useResult) {
+                        output.append("    \(returnValueProperty)")
+                    }
+                }
+            }
+        }
+        
         // Override methods
         for method in classElement.methods {
-            output.append("    \(generateMethodOverrideStub(method))")
+            output.append("    \(generateMethodOverrideStub(method, useResult: useResult))")
             output.append("")
         }
         
@@ -169,7 +211,7 @@ public class StubGenerator: MockGeneratorProtocol {
     
     // MARK: - Function Stub Generation
     
-    private func generateFunctionStub(_ function: FunctionElement, annotation: MockAnnotation) -> String {
+    private func generateFunctionStub(_ function: FunctionElement, annotation: MockAnnotation, useResult: Bool = false) -> String {
         var output = [String]()
         
         // Header comment
@@ -177,13 +219,25 @@ public class StubGenerator: MockGeneratorProtocol {
         output.append("// Generated by SwiftMockGenerator")
         output.append("")
         
+        // Generate return value property for async functions when using useResult
+        if useResult && function.isAsync, let returnType = function.returnType, returnType != "Void" {
+            let defaultValue = generateDefaultValue(for: returnType)
+            output.append("var returnValue: Result<\(returnType), Error> = .success(\(defaultValue))")
+            output.append("")
+        }
+        
         let functionName = "\(function.name)Stub"
-        let signature = generateFunctionSignature(function, name: functionName)
+        let signature = generateFunctionSignature(function, name: functionName, useResult: useResult)
         
         output.append("\(signature) {")
         
         if let returnType = function.returnType, returnType != "Void" {
-            output.append("    return \(generateDefaultValue(for: returnType))")
+            if useResult && function.isAsync {
+                // For async functions with useResult, unwrap the Result and return the value
+                output.append("    return try returnValue.get()")
+            } else {
+                output.append("    return \(generateDefaultValue(for: returnType))")
+            }
         }
         
         output.append("}")
@@ -216,24 +270,47 @@ public class StubGenerator: MockGeneratorProtocol {
         }
     }
     
-    private func generateMethodStub(_ method: MethodElement, isMutable: Bool = false) -> String {
-        let signature = generateMethodSignature(method, isMutable: isMutable)
+    private func generateReturnValueProperty(_ method: MethodElement, useResult: Bool = false) -> String? {
+        guard let returnType = method.returnType, returnType != "Void" else { return nil }
+        
+        if useResult && method.isAsync {
+            // For async methods with useResult, use Result<T, Error> type
+            let defaultValue = generateDefaultValue(for: returnType)
+            return "var \(method.name)ReturnValue: Result<\(returnType), Error> = .success(\(defaultValue))"
+        } else {
+            let defaultValue = generateDefaultValue(for: returnType)
+            return "var \(method.name)ReturnValue: \(returnType) = \(defaultValue)"
+        }
+    }
+    
+    private func generateMethodStub(_ method: MethodElement, isMutable: Bool = false, useResult: Bool = false) -> String {
+        let signature = generateMethodSignature(method, isMutable: isMutable, useResult: useResult)
         var body = [String]()
         
         if let returnType = method.returnType, returnType != "Void" {
-            body.append("return \(generateDefaultValue(for: returnType))")
+            if useResult && method.isAsync {
+                // For async methods with useResult, unwrap the Result and return the value
+                body.append("return try \(method.name)ReturnValue.get()")
+            } else {
+                body.append("return \(generateDefaultValue(for: returnType))")
+            }
         }
         
         let bodyString = body.isEmpty ? "" : "\n        \(body.joined(separator: "\n        "))\n    "
         return "\(signature) {\(bodyString)}"
     }
     
-    private func generateMethodOverrideStub(_ method: MethodElement) -> String {
-        let signature = generateMethodOverrideSignature(method)
+    private func generateMethodOverrideStub(_ method: MethodElement, useResult: Bool = false) -> String {
+        let signature = generateMethodOverrideSignature(method, useResult: useResult)
         var body = [String]()
         
         if let returnType = method.returnType, returnType != "Void" {
-            body.append("return \(generateDefaultValue(for: returnType))")
+            if useResult && method.isAsync {
+                // For async methods with useResult, unwrap the Result and return the value
+                body.append("return try \(method.name)ReturnValue.get()")
+            } else {
+                body.append("return \(generateDefaultValue(for: returnType))")
+            }
         }
         
         let bodyString = body.isEmpty ? "" : "\n        \(body.joined(separator: "\n        "))\n    "
@@ -250,36 +327,43 @@ public class StubGenerator: MockGeneratorProtocol {
         return "\(accessLevel)\(convenience)init\(failableMarker)(\(parameters))\(throwsKeyword) {}"
     }
     
-    private func generateMethodSignature(_ method: MethodElement, isMutable: Bool = false) -> String {
+    private func generateMethodSignature(_ method: MethodElement, isMutable: Bool = false, useResult: Bool = false) -> String {
         let accessLevel = method.accessLevel.keyword
         let staticKeyword = method.isStatic ? "static " : ""
         let mutatingKeyword = isMutable ? "mutating " : ""
         let asyncKeyword = method.isAsync ? " async" : ""
         let throwsKeyword = method.isThrowing ? " throws" : ""
         let parameters = generateParameterList(method.parameters)
+        
+        // Always keep the original signature - only change the returnValue type
         let returnClause = method.returnType.map { " -> \($0)" } ?? ""
         
         return "\(accessLevel)\(staticKeyword)\(mutatingKeyword)func \(method.name)(\(parameters))\(asyncKeyword)\(throwsKeyword)\(returnClause)"
     }
     
-    private func generateMethodOverrideSignature(_ method: MethodElement) -> String {
+    private func generateMethodOverrideSignature(_ method: MethodElement, useResult: Bool = false) -> String {
         let accessLevel = method.accessLevel.keyword
         let staticKeyword = method.isStatic ? "static " : ""
         let asyncKeyword = method.isAsync ? " async" : ""
         let throwsKeyword = method.isThrowing ? " throws" : ""
         let parameters = generateParameterList(method.parameters)
+        
+        // Always keep the original signature - only change the returnValue type
         let returnClause = method.returnType.map { " -> \($0)" } ?? ""
         
         return "\(accessLevel)override \(staticKeyword)func \(method.name)(\(parameters))\(asyncKeyword)\(throwsKeyword)\(returnClause)"
     }
     
-    private func generateFunctionSignature(_ function: FunctionElement, name: String) -> String {
+    private func generateFunctionSignature(_ function: FunctionElement, name: String, useResult: Bool = false) -> String {
         let accessLevel = function.accessLevel.keyword
         let staticKeyword = function.isStatic ? "static " : ""
         let asyncKeyword = function.isAsync ? " async" : ""
         let throwsKeyword = function.isThrowing ? " throws" : ""
         let parameters = generateParameterList(function.parameters)
+        
+        // Always keep the original signature - only change the returnValue type
         let returnClause = function.returnType.map { " -> \($0)" } ?? ""
+        
         let genericClause = function.genericParameters.isEmpty ? "" : "<\(function.genericParameters.joined(separator: ", "))>"
         
         return "\(accessLevel)\(staticKeyword)func \(name)\(genericClause)(\(parameters))\(asyncKeyword)\(throwsKeyword)\(returnClause)"

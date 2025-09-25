@@ -88,7 +88,7 @@ final class SimplifiedCoverageTests: XCTestCase {
                     location: SourceLocation(line: 1, column: 1, file: "test.swift")
                 )
                 
-                let result = try sut.generateMock(for: element, annotation: annotation)
+                let result = try sut.generateMock(for: element, annotation: annotation, useResult: false)
                 
                 XCTAssertFalse(result.isEmpty, "Generator \(mockType) failed for element \(element.name)")
                 XCTAssertTrue(result.contains(element.name), "Generated code doesn't contain element name")
@@ -595,7 +595,7 @@ final class SimplifiedCoverageTests: XCTestCase {
                 location: SourceLocation(line: 1, column: 1, file: "test.swift")
             )
             
-            let result = try sut.generateMock(for: annotation.element, annotation: annotation)
+            let result = try sut.generateMock(for: annotation.element, annotation: annotation, useResult: false)
             
             // All generators should produce basic structure
             XCTAssertTrue(result.contains("MARK:"), "Generator output should contain MARK comments")
@@ -650,7 +650,7 @@ final class SimplifiedCoverageTests: XCTestCase {
                 )
                 
                 // Should not crash with empty names
-                let result = try sut.generateMock(for: element, annotation: annotation)
+                let result = try sut.generateMock(for: element, annotation: annotation, useResult: false)
                 XCTAssertFalse(result.isEmpty)
             }
         }
