@@ -5,6 +5,7 @@ import Foundation
 /// Protocol for different types of mock generators
 public protocol MockGeneratorProtocol {
     func generateMock(for element: CodeElement, annotation: MockAnnotation) throws -> String
+    func generateMockDefinition(for element: CodeElement, annotation: MockAnnotation) throws -> String
 }
 
 // MARK: - Stub Generator
@@ -24,6 +25,13 @@ public class StubGenerator: MockGeneratorProtocol {
         }
     }
     
+    public func generateMockDefinition(for element: CodeElement, annotation: MockAnnotation) throws -> String {
+        // Get the full mock code and remove the header (first 2 lines)
+        let fullMock = try generateMock(for: element, annotation: annotation)
+        let lines = fullMock.components(separatedBy: .newlines)
+        return lines.dropFirst(2).joined(separator: "\n")
+    }
+    
     // MARK: - Protocol Stub Generation
     
     private func generateProtocolStub(_ protocolElement: ProtocolElement, annotation: MockAnnotation) -> String {
@@ -35,6 +43,44 @@ public class StubGenerator: MockGeneratorProtocol {
         output.append("")
         
         // Class declaration
+        let className = "\(protocolElement.name)Stub"
+        let genericClause = protocolElement.genericParameters.isEmpty ? "" : "<\(protocolElement.genericParameters.joined(separator: ", "))>"
+        let inheritanceClause = protocolElement.inheritance.isEmpty ? protocolElement.name : "\(protocolElement.name), \(protocolElement.inheritance.joined(separator: ", "))"
+        
+        output.append("\(protocolElement.accessLevel.keyword)class \(className)\(genericClause): \(inheritanceClause) {")
+        output.append("")
+        
+        // Properties
+        for property in protocolElement.properties {
+            output.append("    \(generatePropertyStub(property))")
+        }
+        
+        if !protocolElement.properties.isEmpty && !protocolElement.methods.isEmpty {
+            output.append("")
+        }
+        
+        // Initializer
+        output.append("    \(protocolElement.accessLevel.keyword)init() {}")
+        
+        if !protocolElement.methods.isEmpty {
+            output.append("")
+        }
+        
+        // Methods
+        for method in protocolElement.methods {
+            output.append("    \(generateMethodStub(method))")
+            output.append("")
+        }
+        
+        output.append("}")
+        
+        return output.joined(separator: "\n")
+    }
+    
+    private func generateProtocolStubDefinition(_ protocolElement: ProtocolElement, annotation: MockAnnotation) -> String {
+        var output = [String]()
+        
+        // Class declaration (without header)
         let className = "\(protocolElement.name)Stub"
         let genericClause = protocolElement.genericParameters.isEmpty ? "" : "<\(protocolElement.genericParameters.joined(separator: ", "))>"
         let inheritanceClause = protocolElement.inheritance.isEmpty ? protocolElement.name : "\(protocolElement.name), \(protocolElement.inheritance.joined(separator: ", "))"
