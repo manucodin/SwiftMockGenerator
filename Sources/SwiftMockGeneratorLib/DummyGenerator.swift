@@ -6,27 +6,27 @@ import Foundation
 public class DummyGenerator: MockGeneratorProtocol {
     public init() {}
     
-    public func generateMock(for element: CodeElement, annotation: MockAnnotation) throws -> String {
+    public func generateMock(for element: CodeElement, annotation: MockAnnotation, useResult: Bool = false) throws -> String {
         switch element {
         case .protocol(let protocolElement):
-            return generateProtocolDummy(protocolElement, annotation: annotation)
+            return generateProtocolDummy(protocolElement, annotation: annotation, useResult: useResult)
         case .class(let classElement):
-            return generateClassDummy(classElement, annotation: annotation)
+            return generateClassDummy(classElement, annotation: annotation, useResult: useResult)
         case .function(let functionElement):
-            return generateFunctionDummy(functionElement, annotation: annotation)
+            return generateFunctionDummy(functionElement, annotation: annotation, useResult: useResult)
         }
     }
     
-    public func generateMockDefinition(for element: CodeElement, annotation: MockAnnotation) throws -> String {
+    public func generateMockDefinition(for element: CodeElement, annotation: MockAnnotation, useResult: Bool = false) throws -> String {
         // Get the full mock code and remove the header (first 2 lines)
-        let fullMock = try generateMock(for: element, annotation: annotation)
+        let fullMock = try generateMock(for: element, annotation: annotation, useResult: useResult)
         let lines = fullMock.components(separatedBy: .newlines)
         return lines.dropFirst(2).joined(separator: "\n")
     }
     
     // MARK: - Protocol Dummy Generation
     
-    private func generateProtocolDummy(_ protocolElement: ProtocolElement, annotation: MockAnnotation) -> String {
+    private func generateProtocolDummy(_ protocolElement: ProtocolElement, annotation: MockAnnotation, useResult: Bool = false) -> String {
         var output = [String]()
         
         // Header comment
@@ -61,7 +61,7 @@ public class DummyGenerator: MockGeneratorProtocol {
         
         // Methods - empty implementations
         for method in protocolElement.methods {
-            output.append("    \(generateDummyMethod(method))")
+            output.append("    \(generateDummyMethod(method, useResult: useResult))")
             output.append("")
         }
         
@@ -72,7 +72,7 @@ public class DummyGenerator: MockGeneratorProtocol {
     
     // MARK: - Class Dummy Generation
     
-    private func generateClassDummy(_ classElement: ClassElement, annotation: MockAnnotation) -> String {
+    private func generateClassDummy(_ classElement: ClassElement, annotation: MockAnnotation, useResult: Bool = false) -> String {
         var output = [String]()
         
         // Header comment
@@ -113,7 +113,7 @@ public class DummyGenerator: MockGeneratorProtocol {
         
         // Override methods - empty implementations
         for method in classElement.methods {
-            output.append("    \(generateDummyMethodOverride(method))")
+            output.append("    \(generateDummyMethodOverride(method, useResult: useResult))")
             output.append("")
         }
         
@@ -125,7 +125,7 @@ public class DummyGenerator: MockGeneratorProtocol {
     
     // MARK: - Function Dummy Generation
     
-    private func generateFunctionDummy(_ function: FunctionElement, annotation: MockAnnotation) -> String {
+    private func generateFunctionDummy(_ function: FunctionElement, annotation: MockAnnotation, useResult: Bool = false) -> String {
         var output = [String]()
         
         // Header comment
@@ -135,13 +135,19 @@ public class DummyGenerator: MockGeneratorProtocol {
         output.append("")
         
         let functionName = "\(function.name)Dummy"
-        let signature = generateFunctionSignature(function, name: functionName)
+        let signature = generateFunctionSignature(function, name: functionName, useResult: useResult)
         
         output.append("\(signature) {")
         output.append("    // Dummy implementation - does nothing")
         
         if let returnType = function.returnType, returnType != "Void" {
-            output.append("    return \(generateMinimalValue(for: returnType))")
+            if useResult && function.isAsync {
+                // For async functions with useResult, return .success() with the minimal value
+                let minimalValue = generateMinimalValue(for: returnType)
+                output.append("    return .success(\(minimalValue))")
+            } else {
+                output.append("    return \(generateMinimalValue(for: returnType))")
+            }
         }
         
         output.append("}")
@@ -174,28 +180,40 @@ public class DummyGenerator: MockGeneratorProtocol {
         }
     }
     
-    private func generateDummyMethod(_ method: MethodElement, isMutable: Bool = false) -> String {
-        let signature = generateMethodSignature(method, isMutable: isMutable)
+    private func generateDummyMethod(_ method: MethodElement, isMutable: Bool = false, useResult: Bool = false) -> String {
+        let signature = generateMethodSignature(method, isMutable: isMutable, useResult: useResult)
         var body = [String]()
         
         body.append("// Dummy implementation - does nothing")
         
         if let returnType = method.returnType, returnType != "Void" {
-            body.append("return \(generateMinimalValue(for: returnType))")
+            if useResult && method.isAsync {
+                // For async methods with useResult, return .success() with the minimal value
+                let minimalValue = generateMinimalValue(for: returnType)
+                body.append("return .success(\(minimalValue))")
+            } else {
+                body.append("return \(generateMinimalValue(for: returnType))")
+            }
         }
         
         let bodyString = body.joined(separator: "\n        ")
         return "\(signature) {\n        \(bodyString)\n    }"
     }
     
-    private func generateDummyMethodOverride(_ method: MethodElement) -> String {
-        let signature = generateMethodOverrideSignature(method)
+    private func generateDummyMethodOverride(_ method: MethodElement, useResult: Bool = false) -> String {
+        let signature = generateMethodOverrideSignature(method, useResult: useResult)
         var body = [String]()
         
         body.append("// Dummy implementation - does nothing")
         
         if let returnType = method.returnType, returnType != "Void" {
-            body.append("return \(generateMinimalValue(for: returnType))")
+            if useResult && method.isAsync {
+                // For async methods with useResult, return .success() with the minimal value
+                let minimalValue = generateMinimalValue(for: returnType)
+                body.append("return .success(\(minimalValue))")
+            } else {
+                body.append("return \(generateMinimalValue(for: returnType))")
+            }
         }
         
         let bodyString = body.joined(separator: "\n        ")
@@ -212,36 +230,58 @@ public class DummyGenerator: MockGeneratorProtocol {
         return "\(accessLevel)\(convenience)init\(failableMarker)(\(parameters))\(throwsKeyword) {\n        // Dummy implementation\n    }"
     }
     
-    private func generateMethodSignature(_ method: MethodElement, isMutable: Bool = false) -> String {
+    private func generateMethodSignature(_ method: MethodElement, isMutable: Bool = false, useResult: Bool = false) -> String {
         let accessLevel = method.accessLevel.keyword
         let staticKeyword = method.isStatic ? "static " : ""
         let mutatingKeyword = isMutable ? "mutating " : ""
         let asyncKeyword = method.isAsync ? " async" : ""
         let throwsKeyword = method.isThrowing ? " throws" : ""
         let parameters = generateParameterList(method.parameters)
-        let returnClause = method.returnType.map { " -> \($0)" } ?? ""
+        
+        let returnClause: String
+        if useResult && method.isAsync, let returnType = method.returnType, returnType != "Void" {
+            // Convert async throws -> T to -> Result<T, Error>
+            returnClause = " -> Result<\(returnType), Error>"
+        } else {
+            returnClause = method.returnType.map { " -> \($0)" } ?? ""
+        }
         
         return "\(accessLevel)\(staticKeyword)\(mutatingKeyword)func \(method.name)(\(parameters))\(asyncKeyword)\(throwsKeyword)\(returnClause)"
     }
     
-    private func generateMethodOverrideSignature(_ method: MethodElement) -> String {
+    private func generateMethodOverrideSignature(_ method: MethodElement, useResult: Bool = false) -> String {
         let accessLevel = method.accessLevel.keyword
         let staticKeyword = method.isStatic ? "static " : ""
         let asyncKeyword = method.isAsync ? " async" : ""
         let throwsKeyword = method.isThrowing ? " throws" : ""
         let parameters = generateParameterList(method.parameters)
-        let returnClause = method.returnType.map { " -> \($0)" } ?? ""
+        
+        let returnClause: String
+        if useResult && method.isAsync, let returnType = method.returnType, returnType != "Void" {
+            // Convert async throws -> T to -> Result<T, Error>
+            returnClause = " -> Result<\(returnType), Error>"
+        } else {
+            returnClause = method.returnType.map { " -> \($0)" } ?? ""
+        }
         
         return "\(accessLevel)override \(staticKeyword)func \(method.name)(\(parameters))\(asyncKeyword)\(throwsKeyword)\(returnClause)"
     }
     
-    private func generateFunctionSignature(_ function: FunctionElement, name: String) -> String {
+    private func generateFunctionSignature(_ function: FunctionElement, name: String, useResult: Bool = false) -> String {
         let accessLevel = function.accessLevel.keyword
         let staticKeyword = function.isStatic ? "static " : ""
         let asyncKeyword = function.isAsync ? " async" : ""
         let throwsKeyword = function.isThrowing ? " throws" : ""
         let parameters = generateParameterList(function.parameters)
-        let returnClause = function.returnType.map { " -> \($0)" } ?? ""
+        
+        let returnClause: String
+        if useResult && function.isAsync, let returnType = function.returnType, returnType != "Void" {
+            // Convert async throws -> T to -> Result<T, Error>
+            returnClause = " -> Result<\(returnType), Error>"
+        } else {
+            returnClause = function.returnType.map { " -> \($0)" } ?? ""
+        }
+        
         let genericClause = function.genericParameters.isEmpty ? "" : "<\(function.genericParameters.joined(separator: ", "))>"
         
         return "\(accessLevel)\(staticKeyword)func \(name)\(genericClause)(\(parameters))\(asyncKeyword)\(throwsKeyword)\(returnClause)"

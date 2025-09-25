@@ -40,12 +40,16 @@ struct SwiftMockGenerator: AsyncParsableCommand {
     @Option(name: .shortAndLong, help: "Module name for @testable import (auto-detected if not provided)")
     var module: String?
     
+    @Flag(help: "Use Result<T, Error> for async methods instead of async throws")
+    var useResult: Bool = false
+    
     mutating func run() async throws {
         let generator = MockGenerator(
             inputPath: input,
             outputPath: output,
             verbose: verbose,
-            moduleName: module
+            moduleName: module,
+            useResult: useResult
         )
         
         if clean {
