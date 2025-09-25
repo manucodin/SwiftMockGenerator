@@ -18,6 +18,8 @@ A powerful Swift CLI tool that automatically generates comprehensive mock object
 - **🎭 Error Mocking**: Configure spies to throw specific errors for testing error scenarios
 - **📝 Clean Code**: Generated mocks follow Swift best practices with organized structure
 - **🔍 Verbose Logging**: Detailed output for debugging and monitoring
+- **🔄 Async Result Support**: Generate mocks with `Result<T, Error>` for async methods using `--use-result`
+- **🔒 Sendable Support**: Automatically detects and marks mocks as `@unchecked Sendable` when needed
 
 ## 🚀 Quick Start
 
@@ -55,7 +57,11 @@ class DataManager {
 
 2. **Generate mocks**:
 ```bash
+# Standard generation
 swift-mock-generator --input ./Sources --output ./Tests/Mocks --verbose
+
+# With Result<T, Error> for async methods
+swift-mock-generator --input ./Sources --output ./Tests/Mocks --use-result --verbose
 ```
 
 3. **Use in your tests**:
@@ -79,6 +85,84 @@ func testDataManager() throws {
 | `--output` | `-o` | Output directory for generated mock files | `./Mocks` |
 | `--verbose` | `-v` | Enable verbose logging | `false` |
 | `--clean` | | Clean output directory before generating mocks | `false` |
+| `--use-result` | | Use `Result<T, Error>` for async methods instead of `async throws` | `false` |
+
+## 🔄 Async Result Support
+
+When working with async methods, you can choose between two approaches:
+
+### Standard Async (Default)
+```swift
+// @Stub
+protocol NetworkService {
+    func fetchData() async throws -> Data
+}
+```
+
+**Generated Mock:**
+```swift
+class NetworkServiceStub: NetworkService {
+    func fetchData() async throws -> Data {
+        return Data()
+    }
+}
+```
+
+### Result-based Async (`--use-result`)
+```bash
+swift-mock-generator --input ./Sources --output ./Tests/Mocks --use-result
+```
+
+**Generated Mock:**
+```swift
+class NetworkServiceStub: NetworkService {
+    var fetchDataReturnValue: Result<Data, Error> = .success(Data())
+    
+    func fetchData() async throws -> Data {
+        return try await fetchDataReturnValue.get()
+    }
+}
+```
+
+**Usage in Tests:**
+```swift
+func testNetworkService() async throws {
+    let stub = NetworkServiceStub()
+    
+    // Simulate success
+    stub.fetchDataReturnValue = .success(sampleData)
+    
+    // Simulate error
+    stub.fetchDataReturnValue = .failure(NetworkError.timeout)
+    
+    let result = try await stub.fetchData()
+    // Handle the unwrapped Data value
+}
+```
+
+## 🔒 Sendable Support
+
+The tool automatically detects when protocols or classes conform to `Sendable` and marks the generated mocks accordingly:
+
+```swift
+// @Stub
+protocol SendableService: Sendable {
+    func fetchData() async throws -> String
+}
+```
+
+**Generated Mock:**
+```swift
+@unchecked Sendable class SendableServiceStub: SendableService, Sendable {
+    var fetchDataReturnValue: Result<String, Error> = .success("")
+    
+    func fetchData() async throws -> String {
+        return try await fetchDataReturnValue.get()
+    }
+}
+```
+
+This ensures your mocks are safe to use in concurrent contexts when the original type is `Sendable`.
 
 ## 🎭 Mock Types
 
@@ -211,6 +295,8 @@ make clean         # Clean build artifacts
 - ✅ **Access control** levels (public, internal, private, fileprivate)
 - ✅ **Property wrappers** and computed properties
 - ✅ **Initializers** with various modifiers
+- ✅ **Sendable conformance** with automatic `@unchecked Sendable` marking
+- ✅ **Async/await** with optional `Result<T, Error>` support
 
 ## 🔧 Integration
 
@@ -246,6 +332,8 @@ dependencies: [
 2. **No Mocks Generated**: Check that comment annotations are properly formatted
 3. **Access Level Issues**: Generated mocks respect the access levels of original types
 4. **Missing Dependencies**: Ensure Swift 5.9+ and macOS 12+ are installed
+5. **Sendable Warnings**: Use `@unchecked Sendable` for mocks that need to be Sendable but have mutable state
+6. **Async Result Issues**: Use `--use-result` flag when you need `Result<T, Error>` instead of `async throws`
 
 ### Debug Mode
 
