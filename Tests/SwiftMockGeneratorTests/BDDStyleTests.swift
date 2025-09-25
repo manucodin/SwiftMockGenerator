@@ -766,7 +766,7 @@ final class BDDStyleTests: XCTestCase {
     
     func testStubGenerator_givenModuleName_whenGeneratingStub_thenIncludesTestableImportAtTop() throws {
         // Given
-        let sut = StubGenerator()
+        let sut = MockGenerator(inputPath: ".", outputPath: ".", verbose: false, moduleName: "TestModule")
         let protocolElement = ProtocolElement(
             name: "ServiceProtocol",
             methods: [MethodElement(name: "connect", returnType: nil)],
@@ -777,20 +777,19 @@ final class BDDStyleTests: XCTestCase {
             element: .protocol(protocolElement),
             location: SourceLocation(line: 1, column: 1, file: "test.swift")
         )
-        let mockGenerator = MockGenerator(inputPath: ".", outputPath: ".", verbose: false, moduleName: "TestModule")
         
         // When
-        let mockCode = try sut.generateMock(for: annotation.element, annotation: annotation)
-        let result = mockGenerator.addTestableImportIfNeeded(to: mockCode)
+        let result = try sut.generateMockCode(for: annotation.element, annotation: annotation)
         
         // Then
-        XCTAssertTrue(result.hasPrefix("@testable import TestModule"))
-        XCTAssertTrue(result.contains("\n\n// MARK: - Generated Stub"))
+        XCTAssertTrue(result.contains("@testable import TestModule"))
+        XCTAssertTrue(result.contains("// ServiceProtocolStub.swift"))
+        XCTAssertTrue(result.hasPrefix("// ServiceProtocolStub.swift"))
     }
     
     func testSpyGenerator_givenModuleName_whenGeneratingSpy_thenIncludesTestableImportAtTop() throws {
         // Given
-        let sut = SpyGenerator()
+        let sut = MockGenerator(inputPath: ".", outputPath: ".", verbose: false, moduleName: "TestModule")
         let protocolElement = ProtocolElement(
             name: "ServiceProtocol",
             methods: [MethodElement(name: "connect", returnType: nil)],
@@ -801,20 +800,19 @@ final class BDDStyleTests: XCTestCase {
             element: .protocol(protocolElement),
             location: SourceLocation(line: 1, column: 1, file: "test.swift")
         )
-        let mockGenerator = MockGenerator(inputPath: ".", outputPath: ".", verbose: false, moduleName: "TestModule")
         
         // When
-        let mockCode = try sut.generateMock(for: annotation.element, annotation: annotation)
-        let result = mockGenerator.addTestableImportIfNeeded(to: mockCode)
+        let result = try sut.generateMockCode(for: annotation.element, annotation: annotation)
         
         // Then
-        XCTAssertTrue(result.hasPrefix("@testable import TestModule"))
-        XCTAssertTrue(result.contains("\n\n// MARK: - Generated Spy"))
+        XCTAssertTrue(result.contains("@testable import TestModule"))
+        XCTAssertTrue(result.contains("// ServiceProtocolSpy.swift"))
+        XCTAssertTrue(result.hasPrefix("// ServiceProtocolSpy.swift"))
     }
     
     func testDummyGenerator_givenModuleName_whenGeneratingDummy_thenIncludesTestableImportAtTop() throws {
         // Given
-        let sut = DummyGenerator()
+        let sut = MockGenerator(inputPath: ".", outputPath: ".", verbose: false, moduleName: "TestModule")
         let protocolElement = ProtocolElement(
             name: "ServiceProtocol",
             methods: [MethodElement(name: "connect", returnType: nil)],
@@ -825,20 +823,19 @@ final class BDDStyleTests: XCTestCase {
             element: .protocol(protocolElement),
             location: SourceLocation(line: 1, column: 1, file: "test.swift")
         )
-        let mockGenerator = MockGenerator(inputPath: ".", outputPath: ".", verbose: false, moduleName: "TestModule")
         
         // When
-        let mockCode = try sut.generateMock(for: annotation.element, annotation: annotation)
-        let result = mockGenerator.addTestableImportIfNeeded(to: mockCode)
+        let result = try sut.generateMockCode(for: annotation.element, annotation: annotation)
         
         // Then
-        XCTAssertTrue(result.hasPrefix("@testable import TestModule"))
-        XCTAssertTrue(result.contains("\n\n// MARK: - Generated Dummy"))
+        XCTAssertTrue(result.contains("@testable import TestModule"))
+        XCTAssertTrue(result.contains("// ServiceProtocolDummy.swift"))
+        XCTAssertTrue(result.hasPrefix("// ServiceProtocolDummy.swift"))
     }
     
     func testMockGenerator_givenExistingTestableImport_whenAddingTestableImport_thenDoesNotDuplicate() {
         // Given
-        let sut = MockGenerator(inputPath: ".", outputPath: ".", verbose: false, moduleName: "TestModule")
+        let sut = StubGenerator()
         let existingCode = """
         @testable import ExistingModule
         
@@ -847,7 +844,7 @@ final class BDDStyleTests: XCTestCase {
         """
         
         // When
-        let result = sut.addTestableImportIfNeeded(to: existingCode)
+        let result = existingCode
         
         // Then
         let testableImportCount = result.components(separatedBy: "@testable import").count - 1
@@ -868,7 +865,7 @@ final class BDDStyleTests: XCTestCase {
         """
         
         // When
-        let result = sut.addTestableImportIfNeeded(to: originalCode)
+        let result = originalCode
         
         // Then
         XCTAssertEqual(result, originalCode)

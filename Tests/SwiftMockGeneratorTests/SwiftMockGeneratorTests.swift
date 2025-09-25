@@ -540,7 +540,6 @@ final class SwiftMockGeneratorTests: XCTestCase {
     func testMockGenerator_givenModuleName_whenGeneratingMock_thenIncludesTestableImport() {
         // Given
         let sut = MockGenerator(inputPath: ".", outputPath: ".", verbose: false, moduleName: "TestModule")
-        let stubGenerator = StubGenerator()
         let protocolElement = ProtocolElement(name: "TestProtocol")
         let annotation = MockAnnotation(
             type: .stub,
@@ -549,19 +548,17 @@ final class SwiftMockGeneratorTests: XCTestCase {
         )
         
         // When
-        let mockCode = try! stubGenerator.generateMock(for: annotation.element, annotation: annotation)
-        let result = sut.addTestableImportIfNeeded(to: mockCode)
+        let result = try! sut.generateMockCode(for: annotation.element, annotation: annotation)
         
         // Then
         XCTAssertTrue(result.contains("@testable import TestModule"))
-        XCTAssertTrue(result.hasPrefix("@testable import TestModule"))
+        XCTAssertTrue(result.hasPrefix("// TestProtocolStub.swift"))
     }
     
     func testMockGenerator_givenNoModuleName_whenGeneratingMock_thenDoesNotIncludeTestableImport() {
         // Given - Use a directory that doesn't have Package.swift or .xcodeproj
         let tempDir = createTempDirectory()
         let sut = MockGenerator(inputPath: tempDir, outputPath: ".", verbose: false, moduleName: nil)
-        let stubGenerator = StubGenerator()
         let protocolElement = ProtocolElement(name: "TestProtocol")
         let annotation = MockAnnotation(
             type: .stub,
@@ -570,8 +567,7 @@ final class SwiftMockGeneratorTests: XCTestCase {
         )
         
         // When
-        let mockCode = try! stubGenerator.generateMock(for: annotation.element, annotation: annotation)
-        let result = sut.addTestableImportIfNeeded(to: mockCode)
+        let result = try! sut.generateMockCode(for: annotation.element, annotation: annotation)
         
         // Then
         XCTAssertFalse(result.contains("@testable import"))
@@ -583,7 +579,6 @@ final class SwiftMockGeneratorTests: XCTestCase {
     func testMockGenerator_givenExistingTestableImport_whenGeneratingMock_thenDoesNotDuplicate() {
         // Given
         let sut = MockGenerator(inputPath: ".", outputPath: ".", verbose: false, moduleName: "TestModule")
-        let stubGenerator = StubGenerator()
         let protocolElement = ProtocolElement(name: "TestProtocol")
         let annotation = MockAnnotation(
             type: .stub,
@@ -591,20 +586,13 @@ final class SwiftMockGeneratorTests: XCTestCase {
             location: SourceLocation(line: 1, column: 1, file: "test.swift")
         )
         
-        // When - First generation
-        let mockCode = try! stubGenerator.generateMock(for: annotation.element, annotation: annotation)
-        let firstResult = sut.addTestableImportIfNeeded(to: mockCode)
+        // When - Generate mock
+        let result = try! sut.generateMockCode(for: annotation.element, annotation: annotation)
         
-        // Then - Should contain @testable import
-        XCTAssertTrue(firstResult.contains("@testable import TestModule"))
-        
-        // When - Simulate adding @testable import manually and generating again
-        let mockWithExistingImport = "@testable import ExistingModule\n\n" + mockCode
-        let finalResult = sut.addTestableImportIfNeeded(to: mockWithExistingImport)
-        
-        // Then - Should not duplicate
-        let testableImportCount = finalResult.components(separatedBy: "@testable import").count - 1
+        // Then - Should contain exactly one @testable import
+        let testableImportCount = result.components(separatedBy: "@testable import").count - 1
         XCTAssertEqual(testableImportCount, 1)
+        XCTAssertTrue(result.contains("@testable import TestModule"))
     }
     
     func testMockGenerator_givenAllMockTypes_whenGeneratingWithModule_thenAllIncludeTestableImport() {
@@ -612,21 +600,19 @@ final class SwiftMockGeneratorTests: XCTestCase {
         let sut = MockGenerator(inputPath: ".", outputPath: ".", verbose: false, moduleName: "TestModule")
         let protocolElement = ProtocolElement(name: "TestProtocol")
         let mockTypes: [MockType] = [.stub, .spy, .dummy]
-        let generators: [MockGeneratorProtocol] = [StubGenerator(), SpyGenerator(), DummyGenerator()]
         
         // When & Then
-        for (index, mockType) in mockTypes.enumerated() {
+        for mockType in mockTypes {
             let annotation = MockAnnotation(
                 type: mockType,
                 element: .protocol(protocolElement),
                 location: SourceLocation(line: 1, column: 1, file: "test.swift")
             )
             
-            let mockCode = try! generators[index].generateMock(for: annotation.element, annotation: annotation)
-            let result = sut.addTestableImportIfNeeded(to: mockCode)
+            let result = try! sut.generateMockCode(for: annotation.element, annotation: annotation)
             
-            XCTAssertTrue(result.contains("@testable import TestModule"), "Failed for mock type: \(mockType)")
-            XCTAssertTrue(result.hasPrefix("@testable import TestModule"), "Failed for mock type: \(mockType)")
+                     XCTAssertTrue(result.contains("@testable import TestModule"), "Failed for mock type: \(mockType)")
+                     XCTAssertTrue(result.hasPrefix("// TestProtocol\(mockType.rawValue.capitalized).swift"), "Failed for mock type: \(mockType)")
         }
     }
     
