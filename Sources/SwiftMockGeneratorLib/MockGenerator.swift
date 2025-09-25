@@ -8,6 +8,7 @@ public class MockGenerator {
     private let outputPath: String
     private let verbose: Bool
     private let moduleName: String?
+    private let useResult: Bool
     
     private let fileManager = FileManager.default
     private let syntaxParser = SyntaxParser()
@@ -15,11 +16,12 @@ public class MockGenerator {
     private let spyGenerator = SpyGenerator()
     private let dummyGenerator = DummyGenerator()
     
-    public init(inputPath: String, outputPath: String, verbose: Bool = false, moduleName: String? = nil) {
+    public init(inputPath: String, outputPath: String, verbose: Bool = false, moduleName: String? = nil, useResult: Bool = false) {
         self.inputPath = inputPath
         self.outputPath = outputPath
         self.verbose = verbose
         self.moduleName = moduleName
+        self.useResult = useResult
     }
     
     /// Clean the output directory before generating new mocks
@@ -104,7 +106,7 @@ public class MockGenerator {
         // Generate each part separately
         let header = generateHeader(for: annotation)
         let testableImport = generateTestableImport()
-        let mockDefinition = try generator.generateMockDefinition(for: annotation.element, annotation: annotation)
+        let mockDefinition = try generator.generateMockDefinition(for: annotation.element, annotation: annotation, useResult: useResult)
         
         // Combine all parts
         let finalMockCode = combineMockParts(header: header, testableImport: testableImport, mockDefinition: mockDefinition)
@@ -139,7 +141,7 @@ public class MockGenerator {
         // Generate each part separately
         let header = generateHeader(for: annotation)
         let testableImport = generateTestableImport()
-        let mockDefinition = try getGenerator(for: annotation.type).generateMockDefinition(for: element, annotation: annotation)
+        let mockDefinition = try getGenerator(for: annotation.type).generateMockDefinition(for: element, annotation: annotation, useResult: useResult)
         
         // Combine all parts
         return combineMockParts(header: header, testableImport: testableImport, mockDefinition: mockDefinition)
