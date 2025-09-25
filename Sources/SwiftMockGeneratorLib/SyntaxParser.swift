@@ -182,6 +182,7 @@ public class AnnotationVisitor: SyntaxVisitor {
         let accessLevel = parseAccessLevel(from: node.modifiers)
         let inheritance = parseInheritanceClause(node.inheritanceClause)
         let genericParameters: [String] = [] // TODO: Parse generic parameters properly
+        let isSendable = inheritance.contains("Sendable")
         
         // Parse protocol members
         var methods: [MethodElement] = []
@@ -204,7 +205,8 @@ public class AnnotationVisitor: SyntaxVisitor {
             properties: properties,
             inheritance: inheritance,
             accessLevel: accessLevel,
-            genericParameters: genericParameters
+            genericParameters: genericParameters,
+            isSendable: isSendable
         )
     }
     
@@ -214,6 +216,7 @@ public class AnnotationVisitor: SyntaxVisitor {
         let inheritance = parseInheritanceClause(node.inheritanceClause)
         let genericParameters: [String] = [] // TODO: Parse generic parameters properly
         let isFinal = node.modifiers.contains { $0.name.text == "final" }
+        let isSendable = inheritance.contains("Sendable")
         
         // Parse class members
         var methods: [MethodElement] = []
@@ -242,7 +245,8 @@ public class AnnotationVisitor: SyntaxVisitor {
             inheritance: inheritance,
             accessLevel: accessLevel,
             genericParameters: genericParameters,
-            isFinal: isFinal
+            isFinal: isFinal,
+            isSendable: isSendable
         )
     }
     

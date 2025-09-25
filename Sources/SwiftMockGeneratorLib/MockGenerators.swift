@@ -46,8 +46,9 @@ public class StubGenerator: MockGeneratorProtocol {
         let className = "\(protocolElement.name)Stub"
         let genericClause = protocolElement.genericParameters.isEmpty ? "" : "<\(protocolElement.genericParameters.joined(separator: ", "))>"
         let inheritanceClause = protocolElement.inheritance.isEmpty ? protocolElement.name : "\(protocolElement.name), \(protocolElement.inheritance.joined(separator: ", "))"
+        let sendableAttribute = protocolElement.isSendable ? "@unchecked Sendable " : ""
         
-        output.append("\(protocolElement.accessLevel.keyword)class \(className)\(genericClause): \(inheritanceClause) {")
+        output.append("\(protocolElement.accessLevel.keyword)\(sendableAttribute)class \(className)\(genericClause): \(inheritanceClause) {")
         output.append("")
         
         // Properties
@@ -84,8 +85,9 @@ public class StubGenerator: MockGeneratorProtocol {
         let className = "\(protocolElement.name)Stub"
         let genericClause = protocolElement.genericParameters.isEmpty ? "" : "<\(protocolElement.genericParameters.joined(separator: ", "))>"
         let inheritanceClause = protocolElement.inheritance.isEmpty ? protocolElement.name : "\(protocolElement.name), \(protocolElement.inheritance.joined(separator: ", "))"
+        let sendableAttribute = protocolElement.isSendable ? "@unchecked Sendable " : ""
         
-        output.append("\(protocolElement.accessLevel.keyword)class \(className)\(genericClause): \(inheritanceClause) {")
+        output.append("\(protocolElement.accessLevel.keyword)\(sendableAttribute)class \(className)\(genericClause): \(inheritanceClause) {")
         output.append("")
         
         // Properties
@@ -129,8 +131,9 @@ public class StubGenerator: MockGeneratorProtocol {
         let className = "\(classElement.name)Stub"
         let genericClause = classElement.genericParameters.isEmpty ? "" : "<\(classElement.genericParameters.joined(separator: ", "))>"
         let inheritanceClause = classElement.inheritance.isEmpty ? classElement.name : "\(classElement.name), \(classElement.inheritance.joined(separator: ", "))"
+        let sendableAttribute = classElement.isSendable ? "@unchecked Sendable " : ""
         
-        output.append("\(classElement.accessLevel.keyword)class \(className)\(genericClause): \(inheritanceClause) {")
+        output.append("\(classElement.accessLevel.keyword)\(sendableAttribute)class \(className)\(genericClause): \(inheritanceClause) {")
         output.append("")
         
         // Override properties if needed

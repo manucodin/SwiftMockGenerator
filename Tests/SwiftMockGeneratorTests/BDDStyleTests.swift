@@ -1246,4 +1246,196 @@ final class BDDStyleTests: XCTestCase {
         XCTAssertTrue(result.contains("func process(item item: T) async throws -> Result<T, Error>"))
         XCTAssertTrue(result.contains("return .success(T())"))
     }
+    
+    // MARK: - SUT: Sendable Support Behavior Tests
+    
+    func testStubGenerator_givenSendableProtocol_whenGeneratingStub_thenIncludesUncheckedSendable() throws {
+        // Given
+        let sut = StubGenerator()
+        let sendableProtocol = ProtocolElement(
+            name: "SendableService",
+            methods: [MethodElement(name: "fetchData", returnType: "String")],
+            inheritance: ["Sendable"],
+            isSendable: true
+        )
+        let annotation = MockAnnotation(
+            type: .stub,
+            element: .protocol(sendableProtocol),
+            location: SourceLocation(line: 1, column: 1, file: "test.swift")
+        )
+        
+        // When
+        let result = try sut.generateMock(for: annotation.element, annotation: annotation, useResult: false)
+        
+        // Then
+        XCTAssertTrue(result.contains("@unchecked Sendable class SendableServiceStub"))
+        XCTAssertTrue(result.contains("SendableService, Sendable"))
+    }
+    
+    func testStubGenerator_givenNonSendableProtocol_whenGeneratingStub_thenDoesNotIncludeUncheckedSendable() throws {
+        // Given
+        let sut = StubGenerator()
+        let nonSendableProtocol = ProtocolElement(
+            name: "RegularService",
+            methods: [MethodElement(name: "fetchData", returnType: "String")],
+            inheritance: [],
+            isSendable: false
+        )
+        let annotation = MockAnnotation(
+            type: .stub,
+            element: .protocol(nonSendableProtocol),
+            location: SourceLocation(line: 1, column: 1, file: "test.swift")
+        )
+        
+        // When
+        let result = try sut.generateMock(for: annotation.element, annotation: annotation, useResult: false)
+        
+        // Then
+        XCTAssertFalse(result.contains("@unchecked Sendable"))
+        XCTAssertTrue(result.contains("class RegularServiceStub"))
+    }
+    
+    func testSpyGenerator_givenSendableProtocol_whenGeneratingSpy_thenIncludesUncheckedSendable() throws {
+        // Given
+        let sut = SpyGenerator()
+        let sendableProtocol = ProtocolElement(
+            name: "SendableRepository",
+            methods: [MethodElement(name: "save", returnType: nil)],
+            inheritance: ["Sendable"],
+            isSendable: true
+        )
+        let annotation = MockAnnotation(
+            type: .spy,
+            element: .protocol(sendableProtocol),
+            location: SourceLocation(line: 1, column: 1, file: "test.swift")
+        )
+        
+        // When
+        let result = try sut.generateMock(for: annotation.element, annotation: annotation, useResult: false)
+        
+        // Then
+        XCTAssertTrue(result.contains("@unchecked Sendable class SendableRepositorySpy"))
+        XCTAssertTrue(result.contains("SendableRepository, Sendable"))
+    }
+    
+    func testDummyGenerator_givenSendableClass_whenGeneratingDummy_thenIncludesUncheckedSendable() throws {
+        // Given
+        let sut = DummyGenerator()
+        let sendableClass = ClassElement(
+            name: "SendableManager",
+            methods: [MethodElement(name: "performTask", returnType: "Int")],
+            inheritance: ["Sendable"],
+            isSendable: true
+        )
+        let annotation = MockAnnotation(
+            type: .dummy,
+            element: .class(sendableClass),
+            location: SourceLocation(line: 1, column: 1, file: "test.swift")
+        )
+        
+        // When
+        let result = try sut.generateMock(for: annotation.element, annotation: annotation, useResult: false)
+        
+        // Then
+        XCTAssertTrue(result.contains("@unchecked Sendable class SendableManagerDummy"))
+        XCTAssertTrue(result.contains("SendableManager, Sendable"))
+    }
+    
+    func testGenerators_givenSendableProtocolWithUseResult_whenGenerating_thenIncludesUncheckedSendable() throws {
+        // Given
+        let generators: [MockGeneratorProtocol] = [StubGenerator(), SpyGenerator(), DummyGenerator()]
+        let sendableProtocol = ProtocolElement(
+            name: "SendableService",
+            methods: [MethodElement(
+                name: "fetchData",
+                returnType: "String",
+                isAsync: true,
+                isThrowing: true
+            )],
+            inheritance: ["Sendable"],
+            isSendable: true
+        )
+        
+        // When & Then
+        for sut in generators {
+            let annotation = MockAnnotation(
+                type: .stub,
+                element: .protocol(sendableProtocol),
+                location: SourceLocation(line: 1, column: 1, file: "test.swift")
+            )
+            
+            let result = try sut.generateMock(for: annotation.element, annotation: annotation, useResult: true)
+            
+            XCTAssertTrue(result.contains("@unchecked Sendable"))
+            XCTAssertTrue(result.contains("Sendable"))
+        }
+    }
+    
+    func testSyntaxParser_givenSendableProtocol_whenParsing_thenDetectsSendable() {
+        // Given
+        let sourceCode = """
+        // @Stub
+        protocol SendableService: Sendable {
+            func fetchData() async throws -> String
+        }
+        """
+        
+        let parser = SyntaxParser()
+        
+        // When
+        let annotations = parser.parseAnnotations(from: sourceCode, filePath: "TestFile.swift")
+        
+        // Then
+        XCTAssertGreaterThan(annotations.count, 0)
+        if case .protocol(let protocolElement) = annotations.first?.element {
+            XCTAssertTrue(protocolElement.isSendable)
+            XCTAssertTrue(protocolElement.inheritance.contains("Sendable"))
+        }
+    }
+    
+    func testSyntaxParser_givenSendableClass_whenParsing_thenDetectsSendable() {
+        // Given
+        let sourceCode = """
+        // @Dummy
+        class SendableManager: Sendable {
+            func performTask() async throws -> Int {
+                return 42
+            }
+        }
+        """
+        
+        let parser = SyntaxParser()
+        
+        // When
+        let annotations = parser.parseAnnotations(from: sourceCode, filePath: "TestFile.swift")
+        
+        // Then
+        XCTAssertGreaterThan(annotations.count, 0)
+        if case .class(let classElement) = annotations.first?.element {
+            XCTAssertTrue(classElement.isSendable)
+            XCTAssertTrue(classElement.inheritance.contains("Sendable"))
+        }
+    }
+    
+    func testSyntaxParser_givenNonSendableProtocol_whenParsing_thenDoesNotDetectSendable() {
+        // Given
+        let sourceCode = """
+        // @Stub
+        protocol RegularService {
+            func fetchData() -> String
+        }
+        """
+        
+        let parser = SyntaxParser()
+        
+        // When
+        let annotations = parser.parseAnnotations(from: sourceCode, filePath: "TestFile.swift")
+        
+        // Then
+        XCTAssertGreaterThan(annotations.count, 0)
+        if case .protocol(let protocolElement) = annotations.first?.element {
+            XCTAssertFalse(protocolElement.isSendable)
+            XCTAssertFalse(protocolElement.inheritance.contains("Sendable"))
+        }
+    }
 }
