@@ -228,7 +228,7 @@ public class SpyGenerator: MockGeneratorProtocol {
         
         if let returnType = function.returnType, returnType != "Void" {
             if useResult && function.isAsync {
-                output.append("        return try await returnValue.get()")
+                output.append("        return try returnValue.get()")
             } else {
                 output.append("        return returnValue")
             }
@@ -299,7 +299,7 @@ public class SpyGenerator: MockGeneratorProtocol {
         if let returnType = method.returnType, returnType != "Void" {
             if useResult && method.isAsync {
                 // For async methods with useResult, unwrap the Result and return the value
-                body.append("return try await \(method.name)ReturnValue.get()")
+                body.append("return try \(method.name)ReturnValue.get()")
             } else {
                 // Throw error if configured (only for non-Result methods)
                 if method.isThrowing {
@@ -332,7 +332,7 @@ public class SpyGenerator: MockGeneratorProtocol {
         if let returnType = method.returnType, returnType != "Void" {
             if useResult && method.isAsync {
                 // For async methods with useResult, unwrap the Result and return the value
-                body.append("return try await \(method.name)ReturnValue.get()")
+                body.append("return try \(method.name)ReturnValue.get()")
             } else {
                 // Throw error if configured (only for non-Result methods)
                 if method.isThrowing {

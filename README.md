@@ -119,7 +119,7 @@ class NetworkServiceStub: NetworkService {
     var fetchDataReturnValue: Result<Data, Error> = .success(Data())
     
     func fetchData() async throws -> Data {
-        return try await fetchDataReturnValue.get()
+        return try fetchDataReturnValue.get()
     }
 }
 ```
@@ -157,7 +157,7 @@ protocol SendableService: Sendable {
     var fetchDataReturnValue: Result<String, Error> = .success("")
     
     func fetchData() async throws -> String {
-        return try await fetchDataReturnValue.get()
+        return try fetchDataReturnValue.get()
     }
 }
 ```

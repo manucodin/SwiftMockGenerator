@@ -171,7 +171,7 @@ public class DummyGenerator: MockGeneratorProtocol {
         if let returnType = function.returnType, returnType != "Void" {
             if useResult && function.isAsync {
                 // For async functions with useResult, unwrap the Result and return the value
-                output.append("    return try await returnValue.get()")
+                output.append("    return try returnValue.get()")
             } else {
                 output.append("    return \(generateMinimalValue(for: returnType))")
             }
@@ -229,7 +229,7 @@ public class DummyGenerator: MockGeneratorProtocol {
         if let returnType = method.returnType, returnType != "Void" {
             if useResult && method.isAsync {
                 // For async methods with useResult, unwrap the Result and return the value
-                body.append("return try await \(method.name)ReturnValue.get()")
+                body.append("return try \(method.name)ReturnValue.get()")
             } else {
                 body.append("return \(generateMinimalValue(for: returnType))")
             }
@@ -248,7 +248,7 @@ public class DummyGenerator: MockGeneratorProtocol {
         if let returnType = method.returnType, returnType != "Void" {
             if useResult && method.isAsync {
                 // For async methods with useResult, unwrap the Result and return the value
-                body.append("return try await \(method.name)ReturnValue.get()")
+                body.append("return try \(method.name)ReturnValue.get()")
             } else {
                 body.append("return \(generateMinimalValue(for: returnType))")
             }
