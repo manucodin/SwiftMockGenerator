@@ -7,6 +7,7 @@ public class MockGenerator {
     private let inputPath: String
     private let outputPath: String
     private let verbose: Bool
+    private let moduleName: String?
     
     private let fileManager = FileManager.default
     private let syntaxParser = SyntaxParser()
@@ -14,10 +15,11 @@ public class MockGenerator {
     private let spyGenerator = SpyGenerator()
     private let dummyGenerator = DummyGenerator()
     
-    public init(inputPath: String, outputPath: String, verbose: Bool = false) {
+    public init(inputPath: String, outputPath: String, verbose: Bool = false, moduleName: String? = nil) {
         self.inputPath = inputPath
         self.outputPath = outputPath
         self.verbose = verbose
+        self.moduleName = moduleName
     }
     
     /// Clean the output directory before generating new mocks
@@ -84,7 +86,7 @@ public class MockGenerator {
         }
     }
     
-    private func generateMock(for annotation: MockAnnotation, originalFile: String) async throws {
+    internal func generateMock(for annotation: MockAnnotation, originalFile: String) async throws {
         let generator: MockGeneratorProtocol
         
         // Debug logging
@@ -101,14 +103,17 @@ public class MockGenerator {
         
         let mockCode = try generator.generateMock(for: annotation.element, annotation: annotation)
         
+        // Add @testable import if module name is available
+        let finalMockCode = addTestableImportIfNeeded(to: mockCode)
+        
         // Debug logging
-        log("📝 Generated mock code length: \(mockCode.count) characters")
+        log("📝 Generated mock code length: \(finalMockCode.count) characters")
         
         // Write to output file
         let outputFile = createOutputFileName(for: annotation, originalFile: originalFile)
         let outputFilePath = (outputPath as NSString).appendingPathComponent(outputFile)
         
-        try mockCode.write(toFile: outputFilePath, atomically: true, encoding: .utf8)
+        try finalMockCode.write(toFile: outputFilePath, atomically: true, encoding: .utf8)
         log("✏️ Generated \(annotation.type.rawValue) mock: \(outputFile)")
     }
     
@@ -122,6 +127,128 @@ public class MockGenerator {
         if verbose {
             print(message)
         }
+    }
+    
+    // MARK: - Module Detection and @testable import
+    
+    internal func addTestableImportIfNeeded(to mockCode: String) -> String {
+        guard let moduleName = detectModuleName() else {
+            return mockCode
+        }
+        
+        // Check if @testable import already exists
+        if mockCode.contains("@testable import") {
+            return mockCode
+        }
+        
+        // Add @testable import at the beginning
+        return "@testable import \(moduleName)\n\n\(mockCode)"
+    }
+    
+    internal func detectModuleName() -> String? {
+        // If module name was provided explicitly, use it
+        if let providedModule = moduleName {
+            return providedModule
+        }
+        
+        // Try to detect from Swift Package
+        if let packageModule = detectSwiftPackageModule() {
+            return packageModule
+        }
+        
+        // Try to detect from Xcode project
+        if let xcodeModule = detectXcodeProjectModule() {
+            return xcodeModule
+        }
+        
+        return nil
+    }
+    
+    private func detectSwiftPackageModule() -> String? {
+        let packageSwiftPath = findPackageSwiftFile()
+        guard let packagePath = packageSwiftPath else { return nil }
+        
+        do {
+            let content = try String(contentsOfFile: packagePath)
+            // Parse Package.swift to find the package name
+            // Look for: name: "PackageName"
+            let lines = content.components(separatedBy: .newlines)
+            for line in lines {
+                let trimmedLine = line.trimmingCharacters(in: .whitespacesAndNewlines)
+                if trimmedLine.hasPrefix("name:") {
+                    // Extract name from: name: "PackageName"
+                    let components = trimmedLine.components(separatedBy: ":")
+                    if components.count >= 2 {
+                        let namePart = components[1].trimmingCharacters(in: .whitespacesAndNewlines)
+                        // Remove quotes and trailing comma
+                        let moduleName = namePart.replacingOccurrences(of: "\"", with: "").replacingOccurrences(of: ",", with: "")
+                        log("📦 Detected Swift Package module: \(moduleName)")
+                        return moduleName
+                    }
+                }
+            }
+        } catch {
+            log("⚠️ Could not read Package.swift: \(error)")
+        }
+        
+        return nil
+    }
+    
+    private func detectXcodeProjectModule() -> String? {
+        // Look for .xcodeproj or .xcworkspace files
+        let projectFiles = findXcodeProjectFiles()
+        guard !projectFiles.isEmpty else { return nil }
+        
+        // Extract module name from the project file path
+        // For .xcodeproj files, the module name is the directory name without .xcodeproj
+        for projectFile in projectFiles {
+            let projectURL = URL(fileURLWithPath: projectFile)
+            let projectName = projectURL.lastPathComponent
+            
+            if projectName.hasSuffix(".xcodeproj") {
+                let moduleName = String(projectName.dropLast(".xcodeproj".count))
+                log("📱 Detected Xcode project module: \(moduleName)")
+                return moduleName
+            } else if projectName.hasSuffix(".xcworkspace") {
+                let moduleName = String(projectName.dropLast(".xcworkspace".count))
+                log("📱 Detected Xcode workspace module: \(moduleName)")
+                return moduleName
+            }
+        }
+        
+        return nil
+    }
+    
+    private func findPackageSwiftFile() -> String? {
+        var currentPath = inputPath
+        
+        // Search up the directory tree for Package.swift
+        while !currentPath.isEmpty && currentPath != "/" {
+            let packagePath = (currentPath as NSString).appendingPathComponent("Package.swift")
+            if fileManager.fileExists(atPath: packagePath) {
+                return packagePath
+            }
+            currentPath = (currentPath as NSString).deletingLastPathComponent
+        }
+        
+        return nil
+    }
+    
+    internal func findXcodeProjectFiles() -> [String] {
+        var projectFiles: [String] = []
+        
+        guard let enumerator = fileManager.enumerator(atPath: inputPath) else {
+            return projectFiles
+        }
+        
+        for case let fileName as String in enumerator {
+            if fileName.hasSuffix(".xcodeproj") || fileName.hasSuffix(".xcworkspace") {
+                let fullPath = (inputPath as NSString).appendingPathComponent(fileName)
+                projectFiles.append(fullPath)
+            }
+        }
+        
+        return projectFiles
     }
 }
 

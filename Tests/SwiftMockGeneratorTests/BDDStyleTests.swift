@@ -761,4 +761,120 @@ final class BDDStyleTests: XCTestCase {
         XCTAssertEqual(annotation.location.file, "TestFile.swift")
         XCTAssertEqual(annotation.type, .stub)
     }
+    
+    // MARK: - @testable import BDD Tests
+    
+    func testStubGenerator_givenModuleName_whenGeneratingStub_thenIncludesTestableImportAtTop() throws {
+        // Given
+        let sut = StubGenerator()
+        let protocolElement = ProtocolElement(
+            name: "ServiceProtocol",
+            methods: [MethodElement(name: "connect", returnType: nil)],
+            accessLevel: .public
+        )
+        let annotation = MockAnnotation(
+            type: .stub,
+            element: .protocol(protocolElement),
+            location: SourceLocation(line: 1, column: 1, file: "test.swift")
+        )
+        let mockGenerator = MockGenerator(inputPath: ".", outputPath: ".", verbose: false, moduleName: "TestModule")
+        
+        // When
+        let mockCode = try sut.generateMock(for: annotation.element, annotation: annotation)
+        let result = mockGenerator.addTestableImportIfNeeded(to: mockCode)
+        
+        // Then
+        XCTAssertTrue(result.hasPrefix("@testable import TestModule"))
+        XCTAssertTrue(result.contains("\n\n// MARK: - Generated Stub"))
+    }
+    
+    func testSpyGenerator_givenModuleName_whenGeneratingSpy_thenIncludesTestableImportAtTop() throws {
+        // Given
+        let sut = SpyGenerator()
+        let protocolElement = ProtocolElement(
+            name: "ServiceProtocol",
+            methods: [MethodElement(name: "connect", returnType: nil)],
+            accessLevel: .public
+        )
+        let annotation = MockAnnotation(
+            type: .spy,
+            element: .protocol(protocolElement),
+            location: SourceLocation(line: 1, column: 1, file: "test.swift")
+        )
+        let mockGenerator = MockGenerator(inputPath: ".", outputPath: ".", verbose: false, moduleName: "TestModule")
+        
+        // When
+        let mockCode = try sut.generateMock(for: annotation.element, annotation: annotation)
+        let result = mockGenerator.addTestableImportIfNeeded(to: mockCode)
+        
+        // Then
+        XCTAssertTrue(result.hasPrefix("@testable import TestModule"))
+        XCTAssertTrue(result.contains("\n\n// MARK: - Generated Spy"))
+    }
+    
+    func testDummyGenerator_givenModuleName_whenGeneratingDummy_thenIncludesTestableImportAtTop() throws {
+        // Given
+        let sut = DummyGenerator()
+        let protocolElement = ProtocolElement(
+            name: "ServiceProtocol",
+            methods: [MethodElement(name: "connect", returnType: nil)],
+            accessLevel: .public
+        )
+        let annotation = MockAnnotation(
+            type: .dummy,
+            element: .protocol(protocolElement),
+            location: SourceLocation(line: 1, column: 1, file: "test.swift")
+        )
+        let mockGenerator = MockGenerator(inputPath: ".", outputPath: ".", verbose: false, moduleName: "TestModule")
+        
+        // When
+        let mockCode = try sut.generateMock(for: annotation.element, annotation: annotation)
+        let result = mockGenerator.addTestableImportIfNeeded(to: mockCode)
+        
+        // Then
+        XCTAssertTrue(result.hasPrefix("@testable import TestModule"))
+        XCTAssertTrue(result.contains("\n\n// MARK: - Generated Dummy"))
+    }
+    
+    func testMockGenerator_givenExistingTestableImport_whenAddingTestableImport_thenDoesNotDuplicate() {
+        // Given
+        let sut = MockGenerator(inputPath: ".", outputPath: ".", verbose: false, moduleName: "TestModule")
+        let existingCode = """
+        @testable import ExistingModule
+        
+        // MARK: - Generated Stub
+        class TestStub {}
+        """
+        
+        // When
+        let result = sut.addTestableImportIfNeeded(to: existingCode)
+        
+        // Then
+        let testableImportCount = result.components(separatedBy: "@testable import").count - 1
+        XCTAssertEqual(testableImportCount, 1)
+        XCTAssertTrue(result.contains("@testable import ExistingModule"))
+        XCTAssertFalse(result.contains("@testable import TestModule"))
+    }
+    
+    func testMockGenerator_givenNoModuleName_whenAddingTestableImport_thenReturnsOriginalCode() {
+        // Given - Use a directory that doesn't have Package.swift or .xcodeproj
+        let tempDir = NSTemporaryDirectory() + UUID().uuidString
+        try! FileManager.default.createDirectory(atPath: tempDir, withIntermediateDirectories: true)
+        
+        let sut = MockGenerator(inputPath: tempDir, outputPath: ".", verbose: false, moduleName: nil)
+        let originalCode = """
+        // MARK: - Generated Stub
+        class TestStub {}
+        """
+        
+        // When
+        let result = sut.addTestableImportIfNeeded(to: originalCode)
+        
+        // Then
+        XCTAssertEqual(result, originalCode)
+        XCTAssertFalse(result.contains("@testable import"))
+        
+        // Cleanup
+        try! FileManager.default.removeItem(atPath: tempDir)
+    }
 }

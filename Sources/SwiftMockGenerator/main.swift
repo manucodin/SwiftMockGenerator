@@ -16,8 +16,12 @@ struct SwiftMockGenerator: AsyncParsableCommand {
         - // @Spy - Creates a spy that records method calls and parameters
         - // @Dummy - Creates a dummy implementation that does nothing
         
+        The tool automatically detects the module name from Package.swift or Xcode project files
+        and adds @testable import statements to generated mock files.
+        
         Example usage:
         swift-mock-generator --input ./Sources --output ./Tests/Mocks
+        swift-mock-generator --input ./Sources --output ./Tests/Mocks --module MyApp
         """
     )
     
@@ -33,11 +37,15 @@ struct SwiftMockGenerator: AsyncParsableCommand {
     @Flag(help: "Clean output directory before generating mocks")
     var clean: Bool = false
     
+    @Option(name: .shortAndLong, help: "Module name for @testable import (auto-detected if not provided)")
+    var module: String?
+    
     mutating func run() async throws {
         let generator = MockGenerator(
             inputPath: input,
             outputPath: output,
-            verbose: verbose
+            verbose: verbose,
+            moduleName: module
         )
         
         if clean {
