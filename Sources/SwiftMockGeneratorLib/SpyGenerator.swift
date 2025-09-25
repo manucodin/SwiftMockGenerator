@@ -228,7 +228,7 @@ public class SpyGenerator: MockGeneratorProtocol {
         
         if let returnType = function.returnType, returnType != "Void" {
             if useResult && function.isAsync {
-                output.append("        return returnValue")
+                output.append("        return try await returnValue.get()")
             } else {
                 output.append("        return returnValue")
             }
@@ -298,8 +298,8 @@ public class SpyGenerator: MockGeneratorProtocol {
         
         if let returnType = method.returnType, returnType != "Void" {
             if useResult && method.isAsync {
-                // For async methods with useResult, return the Result directly
-                body.append("return \(method.name)ReturnValue")
+                // For async methods with useResult, unwrap the Result and return the value
+                body.append("return try await \(method.name)ReturnValue.get()")
             } else {
                 // Throw error if configured (only for non-Result methods)
                 if method.isThrowing {
@@ -331,8 +331,8 @@ public class SpyGenerator: MockGeneratorProtocol {
         
         if let returnType = method.returnType, returnType != "Void" {
             if useResult && method.isAsync {
-                // For async methods with useResult, return the Result directly
-                body.append("return \(method.name)ReturnValue")
+                // For async methods with useResult, unwrap the Result and return the value
+                body.append("return try await \(method.name)ReturnValue.get()")
             } else {
                 // Throw error if configured (only for non-Result methods)
                 if method.isThrowing {
@@ -379,13 +379,8 @@ public class SpyGenerator: MockGeneratorProtocol {
         let throwsKeyword = method.isThrowing ? " throws" : ""
         let parameters = generateParameterList(method.parameters)
         
-        let returnClause: String
-        if useResult && method.isAsync, let returnType = method.returnType, returnType != "Void" {
-            // Convert async throws -> T to -> Result<T, Error>
-            returnClause = " -> Result<\(returnType), Error>"
-        } else {
-            returnClause = method.returnType.map { " -> \($0)" } ?? ""
-        }
+        // Always keep the original signature - only change the returnValue type
+        let returnClause = method.returnType.map { " -> \($0)" } ?? ""
         
         return "\(accessLevel)\(staticKeyword)\(mutatingKeyword)func \(method.name)(\(parameters))\(asyncKeyword)\(throwsKeyword)\(returnClause)"
     }
@@ -397,13 +392,8 @@ public class SpyGenerator: MockGeneratorProtocol {
         let throwsKeyword = method.isThrowing ? " throws" : ""
         let parameters = generateParameterList(method.parameters)
         
-        let returnClause: String
-        if useResult && method.isAsync, let returnType = method.returnType, returnType != "Void" {
-            // Convert async throws -> T to -> Result<T, Error>
-            returnClause = " -> Result<\(returnType), Error>"
-        } else {
-            returnClause = method.returnType.map { " -> \($0)" } ?? ""
-        }
+        // Always keep the original signature - only change the returnValue type
+        let returnClause = method.returnType.map { " -> \($0)" } ?? ""
         
         return "\(accessLevel)override \(staticKeyword)func \(method.name)(\(parameters))\(asyncKeyword)\(throwsKeyword)\(returnClause)"
     }
@@ -414,13 +404,8 @@ public class SpyGenerator: MockGeneratorProtocol {
         let throwsKeyword = function.isThrowing ? " throws" : ""
         let parameters = generateParameterList(function.parameters)
         
-        let returnClause: String
-        if useResult && function.isAsync, let returnType = function.returnType, returnType != "Void" {
-            // Convert async throws -> T to -> Result<T, Error>
-            returnClause = " -> Result<\(returnType), Error>"
-        } else {
-            returnClause = function.returnType.map { " -> \($0)" } ?? ""
-        }
+        // Always keep the original signature - only change the returnValue type
+        let returnClause = function.returnType.map { " -> \($0)" } ?? ""
         
         return "\(accessLevel)func \(name)(\(parameters))\(asyncKeyword)\(throwsKeyword)\(returnClause)"
     }

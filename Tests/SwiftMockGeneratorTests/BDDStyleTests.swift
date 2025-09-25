@@ -898,9 +898,9 @@ final class BDDStyleTests: XCTestCase {
         let result = try sut.generateMock(for: annotation.element, annotation: annotation, useResult: true)
         
         // Then
-        XCTAssertTrue(result.contains("func fetchData(url url: URL) async throws -> Result<Data, Error>"))
-        XCTAssertTrue(result.contains("return .success(Data())"))
-        XCTAssertFalse(result.contains("-> Data"))
+        XCTAssertTrue(result.contains("func fetchData(url url: URL) async throws -> Data"))
+        XCTAssertTrue(result.contains("var fetchDataReturnValue: Result<Data, Error> = .success(Data())"))
+        XCTAssertTrue(result.contains("return try await fetchDataReturnValue.get()"))
     }
     
     func testStubGenerator_givenAsyncMethodWithoutUseResult_whenGeneratingStub_thenUsesOriginalType() throws {
@@ -950,9 +950,9 @@ final class BDDStyleTests: XCTestCase {
         let result = try sut.generateMock(for: annotation.element, annotation: annotation, useResult: true)
         
         // Then
-        XCTAssertTrue(result.contains("func fetchUser(id id: String) async throws -> Result<User, Error>"))
+        XCTAssertTrue(result.contains("func fetchUser(id id: String) async throws -> User"))
         XCTAssertTrue(result.contains("var fetchUserReturnValue: Result<User, Error> = .success(User())"))
-        XCTAssertTrue(result.contains("return fetchUserReturnValue"))
+        XCTAssertTrue(result.contains("return try await fetchUserReturnValue.get()"))
         XCTAssertFalse(result.contains("var fetchUserThrowError"))
     }
     
@@ -1005,9 +1005,9 @@ final class BDDStyleTests: XCTestCase {
         let result = try sut.generateMock(for: annotation.element, annotation: annotation, useResult: true)
         
         // Then
-        XCTAssertTrue(result.contains("func processData(data data: Data) async throws -> Result<ProcessedData, Error>"))
-        XCTAssertTrue(result.contains("return .success(ProcessedData())"))
-        XCTAssertFalse(result.contains("-> ProcessedData"))
+        XCTAssertTrue(result.contains("func processData(data data: Data) async throws -> ProcessedData"))
+        XCTAssertTrue(result.contains("var processDataReturnValue: Result<ProcessedData, Error> = .success(ProcessedData())"))
+        XCTAssertTrue(result.contains("return try await processDataReturnValue.get()"))
     }
     
     func testGenerators_givenNonAsyncMethodWithUseResult_whenGenerating_thenUsesOriginalType() throws {
@@ -1104,8 +1104,9 @@ final class BDDStyleTests: XCTestCase {
         
         // Then
         // Async method with return type should use Result
-        XCTAssertTrue(result.contains("func fetchData(url url: URL) async throws -> Result<Data, Error>"))
-        XCTAssertTrue(result.contains("return .success(Data())"))
+        XCTAssertTrue(result.contains("func fetchData(url url: URL) async throws -> Data"))
+        XCTAssertTrue(result.contains("var fetchDataReturnValue: Result<Data, Error> = .success(Data())"))
+        XCTAssertTrue(result.contains("return try await fetchDataReturnValue.get()"))
         
         // Sync method should not use Result
         XCTAssertTrue(result.contains("func getCount() -> Int"))
@@ -1138,9 +1139,9 @@ final class BDDStyleTests: XCTestCase {
         let result = try sut.generateMock(for: annotation.element, annotation: annotation, useResult: true)
         
         // Then
-        XCTAssertTrue(result.contains("func authenticateStub(username username: String, password password: String) async throws -> Result<String, Error>"))
-        XCTAssertTrue(result.contains("return .success(\"\")"))
-        XCTAssertFalse(result.contains("-> String"))
+        XCTAssertTrue(result.contains("func authenticateStub(username username: String, password password: String) async throws -> String"))
+        XCTAssertTrue(result.contains("var returnValue: Result<String, Error> = .success(\"\")"))
+        XCTAssertTrue(result.contains("return try await returnValue.get()"))
     }
     
     func testSpyGenerator_givenAsyncFunctionWithUseResult_whenGenerating_thenUsesResultType() throws {
@@ -1163,9 +1164,9 @@ final class BDDStyleTests: XCTestCase {
         let result = try sut.generateMock(for: annotation.element, annotation: annotation, useResult: true)
         
         // Then
-        XCTAssertTrue(result.contains("func callValidatetoken(token token: String) async throws -> Result<Bool, Error>"))
+        XCTAssertTrue(result.contains("func callValidatetoken(token token: String) async throws -> Bool"))
         XCTAssertTrue(result.contains("var returnValue: Result<Bool, Error> = .success(false)"))
-        XCTAssertTrue(result.contains("return returnValue"))
+        XCTAssertTrue(result.contains("return try await returnValue.get()"))
     }
     
     func testStubGenerator_givenOptionalReturnTypeWithUseResult_whenGenerating_thenUsesResultType() throws {
@@ -1189,8 +1190,9 @@ final class BDDStyleTests: XCTestCase {
         let result = try sut.generateMock(for: annotation.element, annotation: annotation, useResult: true)
         
         // Then
-        XCTAssertTrue(result.contains("func findUser(id id: String) async throws -> Result<User?, Error>"))
-        XCTAssertTrue(result.contains("return .success(nil)"))
+        XCTAssertTrue(result.contains("func findUser(id id: String) async throws -> User?"))
+        XCTAssertTrue(result.contains("var findUserReturnValue: Result<User?, Error> = .success(nil)"))
+        XCTAssertTrue(result.contains("return try await findUserReturnValue.get()"))
     }
     
     func testStubGenerator_givenArrayReturnTypeWithUseResult_whenGenerating_thenUsesResultType() throws {
@@ -1214,8 +1216,9 @@ final class BDDStyleTests: XCTestCase {
         let result = try sut.generateMock(for: annotation.element, annotation: annotation, useResult: true)
         
         // Then
-        XCTAssertTrue(result.contains("func getUsers() async throws -> Result<[User], Error>"))
-        XCTAssertTrue(result.contains("return .success([])"))
+        XCTAssertTrue(result.contains("func getUsers() async throws -> [User]"))
+        XCTAssertTrue(result.contains("var getUsersReturnValue: Result<[User], Error> = .success([])"))
+        XCTAssertTrue(result.contains("return try await getUsersReturnValue.get()"))
     }
     
     func testStubGenerator_givenGenericReturnTypeWithUseResult_whenGenerating_thenUsesResultType() throws {
@@ -1243,8 +1246,9 @@ final class BDDStyleTests: XCTestCase {
         let result = try sut.generateMock(for: annotation.element, annotation: annotation, useResult: true)
         
         // Then
-        XCTAssertTrue(result.contains("func process(item item: T) async throws -> Result<T, Error>"))
-        XCTAssertTrue(result.contains("return .success(T())"))
+        XCTAssertTrue(result.contains("func process(item item: T) async throws -> T"))
+        XCTAssertTrue(result.contains("var processReturnValue: Result<T, Error> = .success(T())"))
+        XCTAssertTrue(result.contains("return try await processReturnValue.get()"))
     }
     
     // MARK: - SUT: Sendable Support Behavior Tests

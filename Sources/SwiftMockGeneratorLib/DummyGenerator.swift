@@ -56,6 +56,19 @@ public class DummyGenerator: MockGeneratorProtocol {
         // Initializer
         output.append("    \(protocolElement.accessLevel.keyword)init() {}")
         
+        // Generate return value properties for async methods when using useResult
+        if useResult {
+            let hasAsyncMethods = protocolElement.methods.contains { $0.isAsync && $0.returnType != nil && $0.returnType != "Void" }
+            if hasAsyncMethods {
+                output.append("")
+                for method in protocolElement.methods {
+                    if let returnValueProperty = generateReturnValueProperty(method, useResult: useResult) {
+                        output.append("    \(returnValueProperty)")
+                    }
+                }
+            }
+        }
+        
         if !protocolElement.methods.isEmpty {
             output.append("")
         }
@@ -113,6 +126,19 @@ public class DummyGenerator: MockGeneratorProtocol {
             output.append("")
         }
         
+        // Generate return value properties for async methods when using useResult
+        if useResult {
+            let hasAsyncMethods = classElement.methods.contains { $0.isAsync && $0.returnType != nil && $0.returnType != "Void" }
+            if hasAsyncMethods {
+                output.append("")
+                for method in classElement.methods {
+                    if let returnValueProperty = generateReturnValueProperty(method, useResult: useResult) {
+                        output.append("    \(returnValueProperty)")
+                    }
+                }
+            }
+        }
+        
         // Override methods - empty implementations
         for method in classElement.methods {
             output.append("    \(generateDummyMethodOverride(method, useResult: useResult))")
@@ -144,9 +170,8 @@ public class DummyGenerator: MockGeneratorProtocol {
         
         if let returnType = function.returnType, returnType != "Void" {
             if useResult && function.isAsync {
-                // For async functions with useResult, return .success() with the minimal value
-                let minimalValue = generateMinimalValue(for: returnType)
-                output.append("    return .success(\(minimalValue))")
+                // For async functions with useResult, unwrap the Result and return the value
+                output.append("    return try await returnValue.get()")
             } else {
                 output.append("    return \(generateMinimalValue(for: returnType))")
             }
@@ -182,6 +207,19 @@ public class DummyGenerator: MockGeneratorProtocol {
         }
     }
     
+    private func generateReturnValueProperty(_ method: MethodElement, useResult: Bool = false) -> String? {
+        guard let returnType = method.returnType, returnType != "Void" else { return nil }
+        
+        if useResult && method.isAsync {
+            // For async methods with useResult, use Result<T, Error> type
+            let minimalValue = generateMinimalValue(for: returnType)
+            return "var \(method.name)ReturnValue: Result<\(returnType), Error> = .success(\(minimalValue))"
+        } else {
+            let minimalValue = generateMinimalValue(for: returnType)
+            return "var \(method.name)ReturnValue: \(returnType) = \(minimalValue)"
+        }
+    }
+    
     private func generateDummyMethod(_ method: MethodElement, isMutable: Bool = false, useResult: Bool = false) -> String {
         let signature = generateMethodSignature(method, isMutable: isMutable, useResult: useResult)
         var body = [String]()
@@ -190,9 +228,8 @@ public class DummyGenerator: MockGeneratorProtocol {
         
         if let returnType = method.returnType, returnType != "Void" {
             if useResult && method.isAsync {
-                // For async methods with useResult, return .success() with the minimal value
-                let minimalValue = generateMinimalValue(for: returnType)
-                body.append("return .success(\(minimalValue))")
+                // For async methods with useResult, unwrap the Result and return the value
+                body.append("return try await \(method.name)ReturnValue.get()")
             } else {
                 body.append("return \(generateMinimalValue(for: returnType))")
             }
@@ -210,9 +247,8 @@ public class DummyGenerator: MockGeneratorProtocol {
         
         if let returnType = method.returnType, returnType != "Void" {
             if useResult && method.isAsync {
-                // For async methods with useResult, return .success() with the minimal value
-                let minimalValue = generateMinimalValue(for: returnType)
-                body.append("return .success(\(minimalValue))")
+                // For async methods with useResult, unwrap the Result and return the value
+                body.append("return try await \(method.name)ReturnValue.get()")
             } else {
                 body.append("return \(generateMinimalValue(for: returnType))")
             }
@@ -240,13 +276,8 @@ public class DummyGenerator: MockGeneratorProtocol {
         let throwsKeyword = method.isThrowing ? " throws" : ""
         let parameters = generateParameterList(method.parameters)
         
-        let returnClause: String
-        if useResult && method.isAsync, let returnType = method.returnType, returnType != "Void" {
-            // Convert async throws -> T to -> Result<T, Error>
-            returnClause = " -> Result<\(returnType), Error>"
-        } else {
-            returnClause = method.returnType.map { " -> \($0)" } ?? ""
-        }
+        // Always keep the original signature - only change the returnValue type
+        let returnClause = method.returnType.map { " -> \($0)" } ?? ""
         
         return "\(accessLevel)\(staticKeyword)\(mutatingKeyword)func \(method.name)(\(parameters))\(asyncKeyword)\(throwsKeyword)\(returnClause)"
     }
@@ -258,13 +289,8 @@ public class DummyGenerator: MockGeneratorProtocol {
         let throwsKeyword = method.isThrowing ? " throws" : ""
         let parameters = generateParameterList(method.parameters)
         
-        let returnClause: String
-        if useResult && method.isAsync, let returnType = method.returnType, returnType != "Void" {
-            // Convert async throws -> T to -> Result<T, Error>
-            returnClause = " -> Result<\(returnType), Error>"
-        } else {
-            returnClause = method.returnType.map { " -> \($0)" } ?? ""
-        }
+        // Always keep the original signature - only change the returnValue type
+        let returnClause = method.returnType.map { " -> \($0)" } ?? ""
         
         return "\(accessLevel)override \(staticKeyword)func \(method.name)(\(parameters))\(asyncKeyword)\(throwsKeyword)\(returnClause)"
     }
@@ -276,13 +302,8 @@ public class DummyGenerator: MockGeneratorProtocol {
         let throwsKeyword = function.isThrowing ? " throws" : ""
         let parameters = generateParameterList(function.parameters)
         
-        let returnClause: String
-        if useResult && function.isAsync, let returnType = function.returnType, returnType != "Void" {
-            // Convert async throws -> T to -> Result<T, Error>
-            returnClause = " -> Result<\(returnType), Error>"
-        } else {
-            returnClause = function.returnType.map { " -> \($0)" } ?? ""
-        }
+        // Always keep the original signature - only change the returnValue type
+        let returnClause = function.returnType.map { " -> \($0)" } ?? ""
         
         let genericClause = function.genericParameters.isEmpty ? "" : "<\(function.genericParameters.joined(separator: ", "))>"
         
