@@ -369,7 +369,7 @@ final class BDDStyleTests: XCTestCase {
         for _ in 0..<10 {
             queue.async {
                 do {
-                    let result = try sut.generateMock(for: annotation.element, annotation: annotation)
+                    let result = try sut.generateMock(for: annotation.element, annotation: annotation, useResult: false)
                     
                     // Then
                     XCTAssertTrue(result.contains("ConcurrentProtocolStub"))
@@ -413,7 +413,7 @@ final class BDDStyleTests: XCTestCase {
                 location: SourceLocation(line: 1, column: 1, file: "test.swift")
             )
             
-            let result = try sut.generateMock(for: annotation.element, annotation: annotation)
+            let result = try sut.generateMock(for: annotation.element, annotation: annotation, useResult: false)
             
             XCTAssertFalse(result.isEmpty)
             XCTAssertTrue(result.contains("ComplexTypesProtocol"))
@@ -440,7 +440,7 @@ final class BDDStyleTests: XCTestCase {
                 location: SourceLocation(line: 1, column: 1, file: "test.swift")
             )
             
-            let result = try sut.generateMock(for: annotation.element, annotation: annotation)
+            let result = try sut.generateMock(for: annotation.element, annotation: annotation, useResult: false)
             
             XCTAssertFalse(result.isEmpty)
             if accessLevel != .internal {
@@ -484,7 +484,7 @@ final class BDDStyleTests: XCTestCase {
                     location: SourceLocation(line: 1, column: 1, file: "test.swift")
                 )
                 
-                let result = try sut.generateMock(for: element, annotation: annotation)
+                let result = try sut.generateMock(for: element, annotation: annotation, useResult: false)
                 XCTAssertFalse(result.isEmpty)
             }
         }
@@ -505,7 +505,7 @@ final class BDDStyleTests: XCTestCase {
                 location: SourceLocation(line: 1, column: 1, file: "test.swift")
             )
             
-            let result = try sut.generateMock(for: annotation.element, annotation: annotation)
+            let result = try sut.generateMock(for: annotation.element, annotation: annotation, useResult: false)
             
             XCTAssertTrue(result.contains("EmptyProtocol"))
             XCTAssertTrue(result.contains("init()"))
@@ -525,7 +525,7 @@ final class BDDStyleTests: XCTestCase {
                 location: SourceLocation(line: 1, column: 1, file: "test.swift")
             )
             
-            let result = try sut.generateMock(for: annotation.element, annotation: annotation)
+            let result = try sut.generateMock(for: annotation.element, annotation: annotation, useResult: false)
             
             XCTAssertTrue(result.contains("EmptyClass"))
             XCTAssertTrue(result.contains("init()"))
@@ -873,5 +873,377 @@ final class BDDStyleTests: XCTestCase {
         
         // Cleanup
         try! FileManager.default.removeItem(atPath: tempDir)
+    }
+    
+    // MARK: - SUT: UseResult Flag Behavior Tests
+    
+    func testStubGenerator_givenAsyncMethodWithUseResult_whenGeneratingStub_thenUsesResultType() throws {
+        // Given
+        let sut = StubGenerator()
+        let asyncMethod = MethodElement(
+            name: "fetchData",
+            parameters: [ParameterElement(internalName: "url", type: "URL")],
+            returnType: "Data",
+            isAsync: true,
+            isThrowing: true
+        )
+        let protocolElement = ProtocolElement(name: "NetworkService", methods: [asyncMethod])
+        let annotation = MockAnnotation(
+            type: .stub,
+            element: .protocol(protocolElement),
+            location: SourceLocation(line: 1, column: 1, file: "test.swift")
+        )
+        
+        // When
+        let result = try sut.generateMock(for: annotation.element, annotation: annotation, useResult: true)
+        
+        // Then
+        XCTAssertTrue(result.contains("func fetchData(url url: URL) async throws -> Result<Data, Error>"))
+        XCTAssertTrue(result.contains("return .success(Data())"))
+        XCTAssertFalse(result.contains("-> Data"))
+    }
+    
+    func testStubGenerator_givenAsyncMethodWithoutUseResult_whenGeneratingStub_thenUsesOriginalType() throws {
+        // Given
+        let sut = StubGenerator()
+        let asyncMethod = MethodElement(
+            name: "fetchData",
+            parameters: [ParameterElement(internalName: "url", type: "URL")],
+            returnType: "Data",
+            isAsync: true,
+            isThrowing: true
+        )
+        let protocolElement = ProtocolElement(name: "NetworkService", methods: [asyncMethod])
+        let annotation = MockAnnotation(
+            type: .stub,
+            element: .protocol(protocolElement),
+            location: SourceLocation(line: 1, column: 1, file: "test.swift")
+        )
+        
+        // When
+        let result = try sut.generateMock(for: annotation.element, annotation: annotation, useResult: false)
+        
+        // Then
+        XCTAssertTrue(result.contains("func fetchData(url url: URL) async throws -> Data"))
+        XCTAssertTrue(result.contains("return Data()"))
+        XCTAssertFalse(result.contains("Result<"))
+    }
+    
+    func testSpyGenerator_givenAsyncMethodWithUseResult_whenGeneratingSpy_thenUsesSingleReturnValue() throws {
+        // Given
+        let sut = SpyGenerator()
+        let asyncMethod = MethodElement(
+            name: "fetchUser",
+            parameters: [ParameterElement(internalName: "id", type: "String")],
+            returnType: "User",
+            isAsync: true,
+            isThrowing: true
+        )
+        let protocolElement = ProtocolElement(name: "UserService", methods: [asyncMethod])
+        let annotation = MockAnnotation(
+            type: .spy,
+            element: .protocol(protocolElement),
+            location: SourceLocation(line: 1, column: 1, file: "test.swift")
+        )
+        
+        // When
+        let result = try sut.generateMock(for: annotation.element, annotation: annotation, useResult: true)
+        
+        // Then
+        XCTAssertTrue(result.contains("func fetchUser(id id: String) async throws -> Result<User, Error>"))
+        XCTAssertTrue(result.contains("var fetchUserReturnValue: Result<User, Error> = .success(User())"))
+        XCTAssertTrue(result.contains("return fetchUserReturnValue"))
+        XCTAssertFalse(result.contains("var fetchUserThrowError"))
+    }
+    
+    func testSpyGenerator_givenAsyncMethodWithoutUseResult_whenGeneratingSpy_thenUsesSeparateVariables() throws {
+        // Given
+        let sut = SpyGenerator()
+        let asyncMethod = MethodElement(
+            name: "fetchUser",
+            parameters: [ParameterElement(internalName: "id", type: "String")],
+            returnType: "User",
+            isAsync: true,
+            isThrowing: true
+        )
+        let protocolElement = ProtocolElement(name: "UserService", methods: [asyncMethod])
+        let annotation = MockAnnotation(
+            type: .spy,
+            element: .protocol(protocolElement),
+            location: SourceLocation(line: 1, column: 1, file: "test.swift")
+        )
+        
+        // When
+        let result = try sut.generateMock(for: annotation.element, annotation: annotation, useResult: false)
+        
+        // Then
+        XCTAssertTrue(result.contains("func fetchUser(id id: String) async throws -> User"))
+        XCTAssertTrue(result.contains("var fetchUserReturnValue: User = User()"))
+        XCTAssertTrue(result.contains("var fetchUserThrowError: Error?"))
+        XCTAssertTrue(result.contains("if let error = fetchUserThrowError { throw error }"))
+        XCTAssertTrue(result.contains("return fetchUserReturnValue"))
+    }
+    
+    func testDummyGenerator_givenAsyncMethodWithUseResult_whenGeneratingDummy_thenUsesResultType() throws {
+        // Given
+        let sut = DummyGenerator()
+        let asyncMethod = MethodElement(
+            name: "processData",
+            parameters: [ParameterElement(internalName: "data", type: "Data")],
+            returnType: "ProcessedData",
+            isAsync: true,
+            isThrowing: true
+        )
+        let protocolElement = ProtocolElement(name: "DataProcessor", methods: [asyncMethod])
+        let annotation = MockAnnotation(
+            type: .dummy,
+            element: .protocol(protocolElement),
+            location: SourceLocation(line: 1, column: 1, file: "test.swift")
+        )
+        
+        // When
+        let result = try sut.generateMock(for: annotation.element, annotation: annotation, useResult: true)
+        
+        // Then
+        XCTAssertTrue(result.contains("func processData(data data: Data) async throws -> Result<ProcessedData, Error>"))
+        XCTAssertTrue(result.contains("return .success(ProcessedData())"))
+        XCTAssertFalse(result.contains("-> ProcessedData"))
+    }
+    
+    func testGenerators_givenNonAsyncMethodWithUseResult_whenGenerating_thenUsesOriginalType() throws {
+        // Given
+        let generators: [MockGeneratorProtocol] = [StubGenerator(), SpyGenerator(), DummyGenerator()]
+        let syncMethod = MethodElement(
+            name: "getCount",
+            parameters: [],
+            returnType: "Int",
+            isAsync: false,
+            isThrowing: false
+        )
+        let protocolElement = ProtocolElement(name: "CounterService", methods: [syncMethod])
+        
+        // When & Then
+        for sut in generators {
+            let annotation = MockAnnotation(
+                type: .stub,
+                element: .protocol(protocolElement),
+                location: SourceLocation(line: 1, column: 1, file: "test.swift")
+            )
+            
+            let result = try sut.generateMock(for: annotation.element, annotation: annotation, useResult: true)
+            
+            XCTAssertTrue(result.contains("func getCount() -> Int"))
+            XCTAssertFalse(result.contains("Result<"))
+        }
+    }
+    
+    func testGenerators_givenVoidAsyncMethodWithUseResult_whenGenerating_thenUsesOriginalType() throws {
+        // Given
+        let generators: [MockGeneratorProtocol] = [StubGenerator(), SpyGenerator(), DummyGenerator()]
+        let voidAsyncMethod = MethodElement(
+            name: "deleteItem",
+            parameters: [ParameterElement(internalName: "id", type: "String")],
+            returnType: nil,
+            isAsync: true,
+            isThrowing: true
+        )
+        let protocolElement = ProtocolElement(name: "ItemService", methods: [voidAsyncMethod])
+        
+        // When & Then
+        for sut in generators {
+            let annotation = MockAnnotation(
+                type: .stub,
+                element: .protocol(protocolElement),
+                location: SourceLocation(line: 1, column: 1, file: "test.swift")
+            )
+            
+            let result = try sut.generateMock(for: annotation.element, annotation: annotation, useResult: true)
+            
+            XCTAssertTrue(result.contains("func deleteItem(id id: String) async throws"))
+            XCTAssertFalse(result.contains("Result<"))
+        }
+    }
+    
+    func testStubGenerator_givenComplexProtocolWithUseResult_whenGenerating_thenHandlesMixedMethods() throws {
+        // Given
+        let sut = StubGenerator()
+        let asyncMethod = MethodElement(
+            name: "fetchData",
+            parameters: [ParameterElement(internalName: "url", type: "URL")],
+            returnType: "Data",
+            isAsync: true,
+            isThrowing: true
+        )
+        let syncMethod = MethodElement(
+            name: "getCount",
+            parameters: [],
+            returnType: "Int",
+            isAsync: false,
+            isThrowing: false
+        )
+        let voidAsyncMethod = MethodElement(
+            name: "deleteItem",
+            parameters: [ParameterElement(internalName: "id", type: "String")],
+            returnType: nil,
+            isAsync: true,
+            isThrowing: true
+        )
+        
+        let protocolElement = ProtocolElement(
+            name: "ComplexService",
+            methods: [asyncMethod, syncMethod, voidAsyncMethod]
+        )
+        let annotation = MockAnnotation(
+            type: .stub,
+            element: .protocol(protocolElement),
+            location: SourceLocation(line: 1, column: 1, file: "test.swift")
+        )
+        
+        // When
+        let result = try sut.generateMock(for: annotation.element, annotation: annotation, useResult: true)
+        
+        // Then
+        // Async method with return type should use Result
+        XCTAssertTrue(result.contains("func fetchData(url url: URL) async throws -> Result<Data, Error>"))
+        XCTAssertTrue(result.contains("return .success(Data())"))
+        
+        // Sync method should not use Result
+        XCTAssertTrue(result.contains("func getCount() -> Int"))
+        XCTAssertTrue(result.contains("return 0"))
+        
+        // Void async method should not use Result
+        XCTAssertTrue(result.contains("func deleteItem(id id: String) async throws"))
+    }
+    
+    func testStubGenerator_givenAsyncFunctionWithUseResult_whenGenerating_thenUsesResultType() throws {
+        // Given
+        let sut = StubGenerator()
+        let asyncFunction = FunctionElement(
+            name: "authenticate",
+            parameters: [
+                ParameterElement(internalName: "username", type: "String"),
+                ParameterElement(internalName: "password", type: "String")
+            ],
+            returnType: "String",
+            isAsync: true,
+            isThrowing: true
+        )
+        let annotation = MockAnnotation(
+            type: .stub,
+            element: .function(asyncFunction),
+            location: SourceLocation(line: 1, column: 1, file: "test.swift")
+        )
+        
+        // When
+        let result = try sut.generateMock(for: annotation.element, annotation: annotation, useResult: true)
+        
+        // Then
+        XCTAssertTrue(result.contains("func authenticateStub(username username: String, password password: String) async throws -> Result<String, Error>"))
+        XCTAssertTrue(result.contains("return .success(\"\")"))
+        XCTAssertFalse(result.contains("-> String"))
+    }
+    
+    func testSpyGenerator_givenAsyncFunctionWithUseResult_whenGenerating_thenUsesResultType() throws {
+        // Given
+        let sut = SpyGenerator()
+        let asyncFunction = FunctionElement(
+            name: "validateToken",
+            parameters: [ParameterElement(internalName: "token", type: "String")],
+            returnType: "Bool",
+            isAsync: true,
+            isThrowing: true
+        )
+        let annotation = MockAnnotation(
+            type: .spy,
+            element: .function(asyncFunction),
+            location: SourceLocation(line: 1, column: 1, file: "test.swift")
+        )
+        
+        // When
+        let result = try sut.generateMock(for: annotation.element, annotation: annotation, useResult: true)
+        
+        // Then
+        XCTAssertTrue(result.contains("func callValidatetoken(token token: String) async throws -> Result<Bool, Error>"))
+        XCTAssertTrue(result.contains("var returnValue: Result<Bool, Error> = .success(false)"))
+        XCTAssertTrue(result.contains("return returnValue"))
+    }
+    
+    func testStubGenerator_givenOptionalReturnTypeWithUseResult_whenGenerating_thenUsesResultType() throws {
+        // Given
+        let sut = StubGenerator()
+        let method = MethodElement(
+            name: "findUser",
+            parameters: [ParameterElement(internalName: "id", type: "String")],
+            returnType: "User?",
+            isAsync: true,
+            isThrowing: true
+        )
+        let protocolElement = ProtocolElement(name: "UserService", methods: [method])
+        let annotation = MockAnnotation(
+            type: .stub,
+            element: .protocol(protocolElement),
+            location: SourceLocation(line: 1, column: 1, file: "test.swift")
+        )
+        
+        // When
+        let result = try sut.generateMock(for: annotation.element, annotation: annotation, useResult: true)
+        
+        // Then
+        XCTAssertTrue(result.contains("func findUser(id id: String) async throws -> Result<User?, Error>"))
+        XCTAssertTrue(result.contains("return .success(nil)"))
+    }
+    
+    func testStubGenerator_givenArrayReturnTypeWithUseResult_whenGenerating_thenUsesResultType() throws {
+        // Given
+        let sut = StubGenerator()
+        let method = MethodElement(
+            name: "getUsers",
+            parameters: [],
+            returnType: "[User]",
+            isAsync: true,
+            isThrowing: true
+        )
+        let protocolElement = ProtocolElement(name: "UserService", methods: [method])
+        let annotation = MockAnnotation(
+            type: .stub,
+            element: .protocol(protocolElement),
+            location: SourceLocation(line: 1, column: 1, file: "test.swift")
+        )
+        
+        // When
+        let result = try sut.generateMock(for: annotation.element, annotation: annotation, useResult: true)
+        
+        // Then
+        XCTAssertTrue(result.contains("func getUsers() async throws -> Result<[User], Error>"))
+        XCTAssertTrue(result.contains("return .success([])"))
+    }
+    
+    func testStubGenerator_givenGenericReturnTypeWithUseResult_whenGenerating_thenUsesResultType() throws {
+        // Given
+        let sut = StubGenerator()
+        let method = MethodElement(
+            name: "process",
+            parameters: [ParameterElement(internalName: "item", type: "T")],
+            returnType: "T",
+            isAsync: true,
+            isThrowing: true
+        )
+        let protocolElement = ProtocolElement(
+            name: "GenericService",
+            methods: [method],
+            genericParameters: ["T"]
+        )
+        let annotation = MockAnnotation(
+            type: .stub,
+            element: .protocol(protocolElement),
+            location: SourceLocation(line: 1, column: 1, file: "test.swift")
+        )
+        
+        // When
+        let result = try sut.generateMock(for: annotation.element, annotation: annotation, useResult: true)
+        
+        // Then
+        XCTAssertTrue(result.contains("func process(item item: T) async throws -> Result<T, Error>"))
+        XCTAssertTrue(result.contains("return .success(T())"))
     }
 }
