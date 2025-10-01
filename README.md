@@ -25,6 +25,8 @@ A powerful Swift CLI tool that automatically generates comprehensive mock object
 
 ### Installation
 
+#### Manually
+
 ```bash
 # Clone the repository
 git clone https://github.com/manucodin/SwiftMockGenerator.git
@@ -35,6 +37,12 @@ make install
 
 # Or run directly
 swift run swift-mock-generator --input ./Sources --output ./Tests/Mocks
+```
+
+#### 🌱 [Mint](https://github.com/yonaskolb/Mint)
+
+```bash
+mint install manucodin/SwiftMockGenerator
 ```
 
 ### Basic Usage
