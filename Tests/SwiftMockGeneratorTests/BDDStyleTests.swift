@@ -1,6 +1,7 @@
 import XCTest
-@testable import SwiftMockGeneratorLib
 import Foundation
+
+@testable import SwiftMockGenerator
 
 final class BDDStyleTests: XCTestCase {
     
