@@ -6,6 +6,9 @@ let package = Package(
     platforms: [
         .macOS(.v12),
     ],
+    products: [
+        .executable(name: "swift-mock-generator", targets: ["SwiftMockGenerator"])
+    ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-argument-parser", from: "1.3.0"),
         .package(url: "https://github.com/apple/swift-syntax", from: "509.0.0"),
