@@ -308,6 +308,39 @@ make clean         # Clean build artifacts
 
 ## 🔧 Integration
 
+### Running from Xcode
+
+The project can be opened and executed directly from Xcode for development and debugging purposes.
+
+#### Opening the Project
+
+1. **Open Xcode**
+2. **File → Open**
+3. **Select the `Package.swift` file** in the project root
+4. **Click "Open"**
+
+#### Configuring the Execution Scheme
+
+To run the project with custom arguments:
+
+1. **Product → Scheme → Edit Scheme...**
+2. **In the "Run" tab:**
+   - Ensure the **Executable** is set to `SwiftMockGenerator`
+3. **In the "Arguments" tab:**
+   - Add command line arguments as needed:
+     - `--input "./Examples/Sources"` (input directory)
+     - `--output "./Examples/Mocks"` (output directory)
+     - `--verbose` (enable detailed logging)
+     - `--clean` (clean output directory before generation)
+     - `--module "MyModule"` (specify module name for @testable import)
+     - `--use-result` (use Result<T, Error> for async methods)
+
+#### Running the Project
+
+1. **Press Cmd+R** to build and run
+2. **Or use Product → Run** from the menu
+3. **Check the console output** for generation results
+
 ### Xcode Build Phase
 
 Add a build phase script to automatically generate mocks:

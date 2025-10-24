@@ -1,7 +1,8 @@
 import XCTest
-@testable import SwiftMockGeneratorLib
 import SwiftSyntax
 import Foundation
+
+@testable import SwiftMockGenerator
 
 final class FinalCoverageBoostTests: XCTestCase {
     
