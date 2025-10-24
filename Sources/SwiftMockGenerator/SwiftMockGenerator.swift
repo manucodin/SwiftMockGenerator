@@ -1,6 +1,5 @@
 import Foundation
 import ArgumentParser
-import SwiftMockGeneratorLib
 
 @main
 struct SwiftMockGenerator: AsyncParsableCommand {

@@ -1,5 +1,6 @@
 import XCTest
-@testable import SwiftMockGeneratorLib
+
+@testable import SwiftMockGenerator
 
 final class SwiftMockGeneratorTests: XCTestCase {
     

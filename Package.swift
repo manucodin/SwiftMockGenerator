@@ -6,16 +6,6 @@ let package = Package(
     platforms: [
         .macOS(.v12),
     ],
-    products: [
-        .executable(
-            name: "swift-mock-generator",
-            targets: ["SwiftMockGenerator"]
-        ),
-        .library(
-            name: "SwiftMockGeneratorLib",
-            targets: ["SwiftMockGeneratorLib"]
-        ),
-    ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-argument-parser", from: "1.3.0"),
         .package(url: "https://github.com/apple/swift-syntax", from: "509.0.0"),
@@ -24,20 +14,14 @@ let package = Package(
         .executableTarget(
             name: "SwiftMockGenerator",
             dependencies: [
-                "SwiftMockGeneratorLib",
-                .product(name: "ArgumentParser", package: "swift-argument-parser"),
-            ]
-        ),
-        .target(
-            name: "SwiftMockGeneratorLib",
-            dependencies: [
                 .product(name: "SwiftSyntax", package: "swift-syntax"),
                 .product(name: "SwiftParser", package: "swift-syntax"),
+                .product(name: "ArgumentParser", package: "swift-argument-parser"),
             ]
         ),
         .testTarget(
             name: "SwiftMockGeneratorTests",
-            dependencies: ["SwiftMockGeneratorLib"]
+            dependencies: ["SwiftMockGenerator"]
         ),
     ]
 )
