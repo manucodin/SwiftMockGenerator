@@ -1443,4 +1443,477 @@ final class BDDStyleTests: XCTestCase {
             XCTAssertFalse(protocolElement.inheritance.contains("Sendable"))
         }
     }
+    
+    // MARK: - Additional Parser Coverage Tests
+    
+    func testSyntaxParser_givenProtocolWithProperties_whenParsing_thenExtractsPropertiesCorrectly() {
+        // Given
+        let sut = SyntaxParser()
+        let source = """
+        // @Stub
+        protocol DataService {
+            var count: Int { get }
+            var name: String { get set }
+            static var shared: DataService { get }
+        }
+        """
+        
+        // When
+        let annotations = sut.parseAnnotations(from: source, filePath: "test.swift")
+        
+        // Then
+        XCTAssertEqual(annotations.count, 1)
+        if case .protocol(let protocolElement) = annotations[0].element {
+            XCTAssertEqual(protocolElement.properties.count, 3)
+            
+            let countProperty = protocolElement.properties.first { $0.name == "count" }
+            XCTAssertNotNil(countProperty)
+            XCTAssertEqual(countProperty?.type, "Int")
+            XCTAssertTrue(countProperty?.hasGetter == true)
+            XCTAssertFalse(countProperty?.hasSetter == true)
+            
+            let nameProperty = protocolElement.properties.first { $0.name == "name" }
+            XCTAssertNotNil(nameProperty)
+            XCTAssertEqual(nameProperty?.type, "String")
+            XCTAssertTrue(nameProperty?.hasGetter == true)
+            XCTAssertTrue(nameProperty?.hasSetter == true)
+            
+            let sharedProperty = protocolElement.properties.first { $0.name == "shared" }
+            XCTAssertNotNil(sharedProperty)
+            XCTAssertTrue(sharedProperty?.isStatic == true)
+        }
+    }
+    
+    func testSyntaxParser_givenClassWithInitializers_whenParsing_thenExtractsInitializersCorrectly() {
+        // Given
+        let sut = SyntaxParser()
+        let source = """
+        // @Stub
+        class UserManager {
+            init() {}
+            init(name: String) throws {}
+            convenience init(id: Int) {}
+            init?() {}
+        }
+        """
+        
+        // When
+        let annotations = sut.parseAnnotations(from: source, filePath: "test.swift")
+        
+        // Then
+        XCTAssertEqual(annotations.count, 1)
+        if case .class(let classElement) = annotations[0].element {
+            XCTAssertEqual(classElement.initializers.count, 4)
+            
+            let basicInit = classElement.initializers.first { $0.parameters.isEmpty && !$0.isThrowing && !$0.isFailable && !$0.isConvenience }
+            XCTAssertNotNil(basicInit)
+            
+            let throwingInit = classElement.initializers.first { $0.parameters.count == 1 && $0.isThrowing }
+            XCTAssertNotNil(throwingInit)
+            XCTAssertEqual(throwingInit?.parameters.first?.internalName, "name")
+            XCTAssertEqual(throwingInit?.parameters.first?.type, "String")
+            
+            let convenienceInit = classElement.initializers.first { $0.isConvenience }
+            XCTAssertNotNil(convenienceInit)
+            XCTAssertEqual(convenienceInit?.parameters.first?.internalName, "id")
+            XCTAssertEqual(convenienceInit?.parameters.first?.type, "Int")
+            
+            let failableInit = classElement.initializers.first { $0.isFailable }
+            XCTAssertNotNil(failableInit)
+        }
+    }
+    
+    func testSyntaxParser_givenMethodWithComplexParameters_whenParsing_thenHandlesAllParameterTypes() {
+        // Given
+        let sut = SyntaxParser()
+        let source = """
+        // @Spy
+        protocol ComplexService {
+            func processData(_ data: Data, completion: @escaping (Result<String, Error>) -> Void)
+            func updateUser(id: Int, with info: UserInfo) async throws -> User
+            func deleteItems(_ items: [String], force: Bool = false) throws
+        }
+        """
+        
+        // When
+        let annotations = sut.parseAnnotations(from: source, filePath: "test.swift")
+        
+        // Then
+        XCTAssertEqual(annotations.count, 1)
+        if case .protocol(let protocolElement) = annotations[0].element {
+            XCTAssertEqual(protocolElement.methods.count, 3)
+            
+            let processMethod = protocolElement.methods.first { $0.name == "processData" }
+            XCTAssertNotNil(processMethod)
+            XCTAssertEqual(processMethod?.parameters.count, 2)
+            XCTAssertEqual(processMethod?.parameters[0].internalName, "data")
+            XCTAssertEqual(processMethod?.parameters[0].type, "Data")
+            XCTAssertEqual(processMethod?.parameters[0].externalName, "_") // _ parameter
+            XCTAssertEqual(processMethod?.parameters[1].internalName, "completion")
+            XCTAssertTrue(processMethod?.parameters[1].type.contains("@escaping") == true)
+            
+            let updateMethod = protocolElement.methods.first { $0.name == "updateUser" }
+            XCTAssertNotNil(updateMethod)
+            XCTAssertTrue(updateMethod?.isAsync == true)
+            XCTAssertTrue(updateMethod?.isThrowing == true)
+            XCTAssertEqual(updateMethod?.returnType, "User")
+            XCTAssertEqual(updateMethod?.parameters.count, 2)
+            XCTAssertEqual(updateMethod?.parameters[0].internalName, "id")
+            XCTAssertNil(updateMethod?.parameters[0].externalName) // Same external and internal name
+            XCTAssertEqual(updateMethod?.parameters[1].internalName, "info")
+            XCTAssertEqual(updateMethod?.parameters[1].externalName, "with")
+            
+            let deleteMethod = protocolElement.methods.first { $0.name == "deleteItems" }
+            XCTAssertNotNil(deleteMethod)
+            XCTAssertTrue(deleteMethod?.isThrowing == true)
+            XCTAssertEqual(deleteMethod?.parameters.count, 2)
+            XCTAssertEqual(deleteMethod?.parameters[0].internalName, "items")
+            XCTAssertEqual(deleteMethod?.parameters[0].externalName, "_") // _ parameter
+            XCTAssertEqual(deleteMethod?.parameters[1].internalName, "force")
+            XCTAssertNil(deleteMethod?.parameters[1].externalName) // Same external and internal name
+        }
+    }
+    
+    func testSyntaxParser_givenFunctionWithDifferentAccessLevels_whenParsing_thenRespectsAccessLevels() {
+        // Given
+        let sut = SyntaxParser()
+        let source = """
+        // @Stub
+        public protocol PublicService {
+            func publicMethod() -> String
+        }
+        
+        // @Spy
+        private protocol PrivateService {
+            func privateMethod() -> Int
+        }
+        
+        // @Dummy
+        internal protocol InternalService {
+            func internalMethod() -> Bool
+        }
+        """
+        
+        // When
+        let annotations = sut.parseAnnotations(from: source, filePath: "test.swift")
+        
+        // Then
+        XCTAssertEqual(annotations.count, 3)
+        
+        let publicAnnotation = annotations.first { 
+            if case .protocol(let element) = $0.element {
+                return element.name == "PublicService"
+            }
+            return false
+        }
+        XCTAssertNotNil(publicAnnotation)
+        if case .protocol(let element) = publicAnnotation?.element {
+            XCTAssertEqual(element.accessLevel, .public)
+        }
+        
+        let privateAnnotation = annotations.first { 
+            if case .protocol(let element) = $0.element {
+                return element.name == "PrivateService"
+            }
+            return false
+        }
+        XCTAssertNotNil(privateAnnotation)
+        if case .protocol(let element) = privateAnnotation?.element {
+            XCTAssertEqual(element.accessLevel, .private)
+        }
+        
+        let internalAnnotation = annotations.first { 
+            if case .protocol(let element) = $0.element {
+                return element.name == "InternalService"
+            }
+            return false
+        }
+        XCTAssertNotNil(internalAnnotation)
+        if case .protocol(let element) = internalAnnotation?.element {
+            XCTAssertEqual(element.accessLevel, .internal)
+        }
+    }
+    
+    func testSyntaxParser_givenClassWithInheritance_whenParsing_thenExtractsInheritanceCorrectly() {
+        // Given
+        let sut = SyntaxParser()
+        let source = """
+        // @Stub
+        class CustomViewController: UIViewController, UITableViewDataSource, UITableViewDelegate {
+            func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+                return 0
+            }
+        }
+        """
+        
+        // When
+        let annotations = sut.parseAnnotations(from: source, filePath: "test.swift")
+        
+        // Then
+        XCTAssertEqual(annotations.count, 1)
+        if case .class(let classElement) = annotations[0].element {
+            XCTAssertEqual(classElement.inheritance.count, 3)
+            XCTAssertTrue(classElement.inheritance.contains("UIViewController"))
+            XCTAssertTrue(classElement.inheritance.contains("UITableViewDataSource"))
+            XCTAssertTrue(classElement.inheritance.contains("UITableViewDelegate"))
+        }
+    }
+    
+    func testSyntaxParser_givenStandaloneFunction_whenParsing_thenExtractsFunctionCorrectly() {
+        // Given
+        let sut = SyntaxParser()
+        let source = """
+        // @Stub
+        func standaloneFunction(param1: String, param2: Int) async throws -> Result<String, Error> {
+            return .success("")
+        }
+        """
+        
+        // When
+        let annotations = sut.parseAnnotations(from: source, filePath: "test.swift")
+        
+        // Then
+        XCTAssertEqual(annotations.count, 1)
+        if case .function(let functionElement) = annotations[0].element {
+            XCTAssertEqual(functionElement.name, "standaloneFunction")
+            XCTAssertEqual(functionElement.parameters.count, 2)
+            XCTAssertEqual(functionElement.parameters[0].internalName, "param1")
+            XCTAssertEqual(functionElement.parameters[0].type, "String")
+            XCTAssertEqual(functionElement.parameters[1].internalName, "param2")
+            XCTAssertEqual(functionElement.parameters[1].type, "Int")
+            XCTAssertTrue(functionElement.isAsync)
+            XCTAssertTrue(functionElement.isThrowing)
+            XCTAssertEqual(functionElement.returnType, "Result<String, Error>")
+        }
+    }
+    
+    func testSyntaxParser_givenMethodWithMutating_whenParsing_thenDetectsMutating() {
+        // Given
+        let sut = SyntaxParser()
+        let source = """
+        // @Spy
+        protocol MutableService {
+            mutating func updateValue(_ newValue: Int)
+            func readValue() -> Int
+        }
+        """
+        
+        // When
+        let annotations = sut.parseAnnotations(from: source, filePath: "test.swift")
+        
+        // Then
+        XCTAssertEqual(annotations.count, 1)
+        if case .protocol(let protocolElement) = annotations[0].element {
+            XCTAssertEqual(protocolElement.methods.count, 2)
+            
+            let mutatingMethod = protocolElement.methods.first { $0.name == "updateValue" }
+            XCTAssertNotNil(mutatingMethod)
+            XCTAssertTrue(mutatingMethod?.isMutating == true)
+            
+            let readMethod = protocolElement.methods.first { $0.name == "readValue" }
+            XCTAssertNotNil(readMethod)
+            XCTAssertFalse(readMethod?.isMutating == true)
+        }
+    }
+    
+    func testSyntaxParser_givenPropertyWithComputedAccessors_whenParsing_thenDetectsAccessors() {
+        // Given
+        let sut = SyntaxParser()
+        let source = """
+        // @Stub
+        protocol ComputedPropertyService {
+            var computedValue: String { get }
+            var mutableValue: String { get set }
+            var readOnlyValue: String { get }
+        }
+        """
+        
+        // When
+        let annotations = sut.parseAnnotations(from: source, filePath: "test.swift")
+        
+        // Then
+        XCTAssertEqual(annotations.count, 1)
+        if case .protocol(let protocolElement) = annotations[0].element {
+            XCTAssertEqual(protocolElement.properties.count, 3)
+            
+            let computedProperty = protocolElement.properties.first { $0.name == "computedValue" }
+            XCTAssertNotNil(computedProperty)
+            XCTAssertTrue(computedProperty?.hasGetter == true)
+            XCTAssertFalse(computedProperty?.hasSetter == true)
+            
+            let mutableProperty = protocolElement.properties.first { $0.name == "mutableValue" }
+            XCTAssertNotNil(mutableProperty)
+            XCTAssertTrue(mutableProperty?.hasGetter == true)
+            XCTAssertTrue(mutableProperty?.hasSetter == true)
+            
+            let readOnlyProperty = protocolElement.properties.first { $0.name == "readOnlyValue" }
+            XCTAssertNotNil(readOnlyProperty)
+            XCTAssertTrue(readOnlyProperty?.hasGetter == true)
+            XCTAssertFalse(readOnlyProperty?.hasSetter == true)
+        }
+    }
+    
+    func testSyntaxParser_givenAnnotationWithDifferentFormats_whenParsing_thenRecognizesAllFormats() {
+        // Given
+        let sut = SyntaxParser()
+        let source = """
+        // @Stub
+        protocol StubProtocol {
+            func stubMethod() -> String
+        }
+        
+        /* @Spy */
+        protocol SpyProtocol {
+            func spyMethod() -> Int
+        }
+        
+        // @Dummy
+        protocol DummyProtocol {
+            func dummyMethod() -> Bool
+        }
+        """
+        
+        // When
+        let annotations = sut.parseAnnotations(from: source, filePath: "test.swift")
+        
+        // Then
+        XCTAssertEqual(annotations.count, 3)
+        
+        let stubAnnotation = annotations.first { $0.type == .stub }
+        XCTAssertNotNil(stubAnnotation)
+        
+        let spyAnnotation = annotations.first { $0.type == .spy }
+        XCTAssertNotNil(spyAnnotation)
+        
+        let dummyAnnotation = annotations.first { $0.type == .dummy }
+        XCTAssertNotNil(dummyAnnotation)
+    }
+    
+    func testSyntaxParser_givenInvalidAnnotation_whenParsing_thenIgnoresInvalidAnnotations() {
+        // Given
+        let sut = SyntaxParser()
+        let source = """
+        // @Invalid
+        protocol InvalidProtocol {
+            func invalidMethod() -> String
+        }
+        
+        // @Stub
+        protocol ValidProtocol {
+            func validMethod() -> String
+        }
+        """
+        
+        // When
+        let annotations = sut.parseAnnotations(from: source, filePath: "test.swift")
+        
+        // Then
+        XCTAssertEqual(annotations.count, 1)
+        XCTAssertEqual(annotations[0].type, .stub)
+        if case .protocol(let protocolElement) = annotations[0].element {
+            XCTAssertEqual(protocolElement.name, "ValidProtocol")
+        }
+    }
+    
+    func testSyntaxParser_givenMethodWithStaticModifier_whenParsing_thenDetectsStatic() {
+        // Given
+        let sut = SyntaxParser()
+        let source = """
+        // @Stub
+        protocol StaticService {
+            static func staticMethod() -> String
+            func instanceMethod() -> Int
+        }
+        """
+        
+        // When
+        let annotations = sut.parseAnnotations(from: source, filePath: "test.swift")
+        
+        // Then
+        XCTAssertEqual(annotations.count, 1)
+        if case .protocol(let protocolElement) = annotations[0].element {
+            XCTAssertEqual(protocolElement.methods.count, 2)
+            
+            let staticMethod = protocolElement.methods.first { $0.name == "staticMethod" }
+            XCTAssertNotNil(staticMethod)
+            XCTAssertTrue(staticMethod?.isStatic == true)
+            
+            let instanceMethod = protocolElement.methods.first { $0.name == "instanceMethod" }
+            XCTAssertNotNil(instanceMethod)
+            XCTAssertFalse(instanceMethod?.isStatic == true)
+        }
+    }
+    
+    func testSyntaxParser_givenPropertyWithLazyModifier_whenParsing_thenDetectsLazy() {
+        // Given
+        let sut = SyntaxParser()
+        let source = """
+        // @Stub
+        class LazyPropertyClass {
+            lazy var lazyProperty: String = "default"
+            var normalProperty: Int = 0
+        }
+        """
+        
+        // When
+        let annotations = sut.parseAnnotations(from: source, filePath: "test.swift")
+        
+        // Then
+        XCTAssertEqual(annotations.count, 1)
+        if case .class(let classElement) = annotations[0].element {
+            XCTAssertEqual(classElement.properties.count, 2)
+            
+            let lazyProperty = classElement.properties.first { $0.name == "lazyProperty" }
+            XCTAssertNotNil(lazyProperty)
+            XCTAssertTrue(lazyProperty?.isLazy == true)
+            
+            let normalProperty = classElement.properties.first { $0.name == "normalProperty" }
+            XCTAssertNotNil(normalProperty)
+            XCTAssertFalse(normalProperty?.isLazy == true)
+        }
+    }
+    
+    func testSyntaxParser_givenClassWithFinalModifier_whenParsing_thenDetectsFinal() {
+        // Given
+        let sut = SyntaxParser()
+        let source = """
+        // @Stub
+        final class FinalClass {
+            func method() -> String { return "" }
+        }
+        
+        // @Spy
+        class RegularClass {
+            func method() -> String { return "" }
+        }
+        """
+        
+        // When
+        let annotations = sut.parseAnnotations(from: source, filePath: "test.swift")
+        
+        // Then
+        XCTAssertEqual(annotations.count, 2)
+        
+        let finalClassAnnotation = annotations.first { 
+            if case .class(let element) = $0.element {
+                return element.name == "FinalClass"
+            }
+            return false
+        }
+        XCTAssertNotNil(finalClassAnnotation)
+        if case .class(let element) = finalClassAnnotation?.element {
+            XCTAssertTrue(element.isFinal)
+        }
+        
+        let regularClassAnnotation = annotations.first { 
+            if case .class(let element) = $0.element {
+                return element.name == "RegularClass"
+            }
+            return false
+        }
+        XCTAssertNotNil(regularClassAnnotation)
+        if case .class(let element) = regularClassAnnotation?.element {
+            XCTAssertFalse(element.isFinal)
+        }
+    }
 }
