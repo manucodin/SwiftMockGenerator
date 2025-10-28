@@ -925,7 +925,7 @@ final class BDDStyleTests: XCTestCase {
         let result = try sut.generateMock(for: annotation.element, annotation: annotation, useResult: false)
         
         // Then
-        XCTAssertTrue(result.contains("func fetchData(url url: URL) async throws -> Data"))
+        XCTAssertTrue(result.contains("func fetchData(url: URL) async throws -> Data"))
         XCTAssertTrue(result.contains("return Data()"))
         XCTAssertFalse(result.contains("Result<"))
     }
@@ -951,7 +951,7 @@ final class BDDStyleTests: XCTestCase {
         let result = try sut.generateMock(for: annotation.element, annotation: annotation, useResult: true)
         
         // Then
-        XCTAssertTrue(result.contains("func fetchUser(id id: String) async throws -> User"))
+        XCTAssertTrue(result.contains("func fetchUser(id: String) async throws -> User"))
         XCTAssertTrue(result.contains("var fetchUserReturnValue: Result<User, Error> = .success(User())"))
         XCTAssertTrue(result.contains("return try fetchUserReturnValue.get()"))
         XCTAssertFalse(result.contains("var fetchUserThrowError"))
@@ -978,7 +978,7 @@ final class BDDStyleTests: XCTestCase {
         let result = try sut.generateMock(for: annotation.element, annotation: annotation, useResult: false)
         
         // Then
-        XCTAssertTrue(result.contains("func fetchUser(id id: String) async throws -> User"))
+        XCTAssertTrue(result.contains("func fetchUser(id: String) async throws -> User"))
         XCTAssertTrue(result.contains("var fetchUserReturnValue: User = User()"))
         XCTAssertTrue(result.contains("var fetchUserThrowError: Error?"))
         XCTAssertTrue(result.contains("if let error = fetchUserThrowError { throw error }"))
@@ -1006,7 +1006,7 @@ final class BDDStyleTests: XCTestCase {
         let result = try sut.generateMock(for: annotation.element, annotation: annotation, useResult: true)
         
         // Then
-        XCTAssertTrue(result.contains("func processData(data data: Data) async throws -> ProcessedData"))
+        XCTAssertTrue(result.contains("func processData(data: Data) async throws -> ProcessedData"))
         XCTAssertTrue(result.contains("var processDataReturnValue: Result<ProcessedData, Error> = .success(ProcessedData())"))
         XCTAssertTrue(result.contains("return try processDataReturnValue.get()"))
     }
@@ -1060,7 +1060,7 @@ final class BDDStyleTests: XCTestCase {
             
             let result = try sut.generateMock(for: annotation.element, annotation: annotation, useResult: true)
             
-            XCTAssertTrue(result.contains("func deleteItem(id id: String) async throws"))
+            XCTAssertTrue(result.contains("func deleteItem(id: String) async throws"))
             XCTAssertFalse(result.contains("Result<"))
         }
     }
@@ -1105,7 +1105,7 @@ final class BDDStyleTests: XCTestCase {
         
         // Then
         // Async method with return type should use Result
-        XCTAssertTrue(result.contains("func fetchData(url url: URL) async throws -> Data"))
+        XCTAssertTrue(result.contains("func fetchData(url: URL) async throws -> Data"))
         XCTAssertTrue(result.contains("var fetchDataReturnValue: Result<Data, Error> = .success(Data())"))
         XCTAssertTrue(result.contains("return try fetchDataReturnValue.get()"))
         
@@ -1114,7 +1114,7 @@ final class BDDStyleTests: XCTestCase {
         XCTAssertTrue(result.contains("return 0"))
         
         // Void async method should not use Result
-        XCTAssertTrue(result.contains("func deleteItem(id id: String) async throws"))
+        XCTAssertTrue(result.contains("func deleteItem(id: String) async throws"))
     }
     
     func testStubGenerator_givenAsyncFunctionWithUseResult_whenGenerating_thenUsesResultType() throws {
@@ -1140,7 +1140,7 @@ final class BDDStyleTests: XCTestCase {
         let result = try sut.generateMock(for: annotation.element, annotation: annotation, useResult: true)
         
         // Then
-        XCTAssertTrue(result.contains("func authenticateStub(username username: String, password password: String) async throws -> String"))
+        XCTAssertTrue(result.contains("func authenticateStub(username: String, password: String) async throws -> String"))
         XCTAssertTrue(result.contains("var returnValue: Result<String, Error> = .success(\"\")"))
         XCTAssertTrue(result.contains("return try returnValue.get()"))
     }
@@ -1165,7 +1165,7 @@ final class BDDStyleTests: XCTestCase {
         let result = try sut.generateMock(for: annotation.element, annotation: annotation, useResult: true)
         
         // Then
-        XCTAssertTrue(result.contains("func callValidatetoken(token token: String) async throws -> Bool"))
+        XCTAssertTrue(result.contains("func callValidatetoken(token: String) async throws -> Bool"))
         XCTAssertTrue(result.contains("var returnValue: Result<Bool, Error> = .success(false)"))
         XCTAssertTrue(result.contains("return try returnValue.get()"))
     }
@@ -1191,7 +1191,7 @@ final class BDDStyleTests: XCTestCase {
         let result = try sut.generateMock(for: annotation.element, annotation: annotation, useResult: true)
         
         // Then
-        XCTAssertTrue(result.contains("func findUser(id id: String) async throws -> User?"))
+        XCTAssertTrue(result.contains("func findUser(id: String) async throws -> User?"))
         XCTAssertTrue(result.contains("var findUserReturnValue: Result<User?, Error> = .success(nil)"))
         XCTAssertTrue(result.contains("return try findUserReturnValue.get()"))
     }
@@ -1247,7 +1247,7 @@ final class BDDStyleTests: XCTestCase {
         let result = try sut.generateMock(for: annotation.element, annotation: annotation, useResult: true)
         
         // Then
-        XCTAssertTrue(result.contains("func process(item item: T) async throws -> T"))
+        XCTAssertTrue(result.contains("func process(item: T) async throws -> T"))
         XCTAssertTrue(result.contains("var processReturnValue: Result<T, Error> = .success(T())"))
         XCTAssertTrue(result.contains("return try processReturnValue.get()"))
     }
