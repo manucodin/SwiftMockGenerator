@@ -412,12 +412,16 @@ public class SpyGenerator: MockGeneratorProtocol {
     
     private func generateParameterList(_ parameters: [ParameterElement]) -> String {
         return parameters.map { parameter in
-            let externalName = parameter.externalName ?? parameter.internalName
             let inoutKeyword = parameter.isInout ? "inout " : ""
             let variadicMarker = parameter.isVariadic ? "..." : ""
             let defaultValueClause = parameter.defaultValue.map { " = \($0)" } ?? ""
             
-            return "\(externalName) \(parameter.internalName): \(inoutKeyword)\(parameter.type)\(variadicMarker)\(defaultValueClause)"
+            // If externalName exists, use it; otherwise use internal name without duplication
+            if let externalName = parameter.externalName {
+                return "\(externalName) \(parameter.internalName): \(inoutKeyword)\(parameter.type)\(variadicMarker)\(defaultValueClause)"
+            } else {
+                return "\(parameter.internalName): \(inoutKeyword)\(parameter.type)\(variadicMarker)\(defaultValueClause)"
+            }
         }.joined(separator: ", ")
     }
     

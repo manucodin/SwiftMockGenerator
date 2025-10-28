@@ -294,12 +294,15 @@ public class AnnotationVisitor: SyntaxVisitor {
     
     private func parseParameterClause(_ clause: FunctionParameterClauseSyntax) -> [ParameterElement] {
         return clause.parameters.map { parameter in
-            let externalName = parameter.firstName.text
+            let firstName = parameter.firstName.text
             let internalName = parameter.secondName?.text ?? parameter.firstName.text
             let type = parameter.type.description.trimmingCharacters(in: .whitespaces)
             
+            // External name is only different if there's a second name or the first name is not empty
+            let externalName = parameter.secondName != nil ? firstName : nil
+            
             return ParameterElement(
-                externalName: externalName == internalName ? nil : externalName,
+                externalName: externalName,
                 internalName: internalName,
                 type: type,
                 defaultValue: nil,

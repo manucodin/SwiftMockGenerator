@@ -899,7 +899,7 @@ final class BDDStyleTests: XCTestCase {
         let result = try sut.generateMock(for: annotation.element, annotation: annotation, useResult: true)
         
         // Then
-        XCTAssertTrue(result.contains("func fetchData(url url: URL) async throws -> Data"))
+        XCTAssertTrue(result.contains("func fetchData(url: URL) async throws -> Data"))
         XCTAssertTrue(result.contains("var fetchDataReturnValue: Result<Data, Error> = .success(Data())"))
         XCTAssertTrue(result.contains("return try fetchDataReturnValue.get()"))
     }
