@@ -25,6 +25,13 @@ A powerful Swift CLI tool that automatically generates comprehensive mock object
 
 ### Installation
 
+#### 🍺 Homebrew (Recommended)
+
+```bash
+brew tap manucodin/swift-mock-generator
+brew install swift-mock-generator
+```
+
 #### Manually
 
 ```bash
@@ -287,7 +294,7 @@ class LoggerDummy: Logger {
 make help          # Show all available commands
 make install       # Build and install system-wide
 make uninstall     # Remove from system
-make test          # Run test suite (99 tests)
+make test          # Run test suite
 make coverage      # Run tests with coverage report
 make demo          # See the tool in action with examples
 make clean         # Clean build artifacts
