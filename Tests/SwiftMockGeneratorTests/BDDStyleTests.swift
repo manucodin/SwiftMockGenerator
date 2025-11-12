@@ -836,7 +836,6 @@ final class BDDStyleTests: XCTestCase {
     
     func testMockGenerator_givenExistingTestableImport_whenAddingTestableImport_thenDoesNotDuplicate() {
         // Given
-        let sut = StubGenerator()
         let existingCode = """
         @testable import ExistingModule
         
@@ -859,7 +858,6 @@ final class BDDStyleTests: XCTestCase {
         let tempDir = NSTemporaryDirectory() + UUID().uuidString
         try! FileManager.default.createDirectory(atPath: tempDir, withIntermediateDirectories: true)
         
-        let sut = MockGenerator(inputPath: tempDir, outputPath: ".", verbose: false, moduleName: nil)
         let originalCode = """
         // MARK: - Generated Stub
         class TestStub {}
