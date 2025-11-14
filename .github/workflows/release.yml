@@ -144,12 +144,9 @@ jobs:
       
       - name: Checkout main branch
         run: |
-          # Determine the default branch name
-          DEFAULT_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@' || echo "main")
-          
-          # Checkout the default branch (tags are in detached HEAD state)
-          git checkout "$DEFAULT_BRANCH"
-          git pull origin "$DEFAULT_BRANCH"
+          # Checkout the main branch (tags are in detached HEAD state)
+          git checkout main
+          git pull origin main
       
       - name: Update Homebrew formula
         run: |
@@ -170,9 +167,6 @@ jobs:
           TAG=${{ steps.get_version.outputs.tag }}
           BRANCH_NAME="update-homebrew-formula-${TAG}"
           
-          # Determine the default branch name again
-          DEFAULT_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@' || echo "main")
-          
           # Check if there are changes
           if git diff --quiet Formula/swift-mock-generator.rb; then
             echo "No changes to commit"
@@ -190,4 +184,4 @@ jobs:
           git push -u origin "$BRANCH_NAME"
           
           echo "✅ Branch '$BRANCH_NAME' created and pushed successfully"
-          echo "You can now create a PR from this branch to $DEFAULT_BRANCH"
+          echo "You can now create a PR from this branch to main"
