@@ -91,6 +91,28 @@ jobs:
           draft: false
           prerelease: false
       
+      - name: Mark release as latest
+        run: |
+          TAG=${{ steps.get_version.outputs.tag }}
+          REPO="${{ github.repository }}"
+          
+          # Get the release ID
+          RELEASE_ID=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/repos/${REPO}/releases/tags/${TAG}" | \
+            grep -o '"id":[0-9]*' | head -1 | cut -d':' -f2)
+          
+          if [ -n "$RELEASE_ID" ]; then
+            # Mark as latest
+            curl -X PATCH \
+              -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              -H "Accept: application/vnd.github.v3+json" \
+              "https://api.github.com/repos/${REPO}/releases/${RELEASE_ID}" \
+              -d '{"make_latest": true}'
+            echo "✅ Release marked as latest"
+          else
+            echo "⚠️ Could not find release ID for tag ${TAG}"
+          fi
+      
       - name: Wait for GitHub to generate tarball
         run: sleep 10
       
@@ -120,6 +142,15 @@ jobs:
           
           echo "sha256=$SHA256" >> $GITHUB_OUTPUT
       
+      - name: Checkout main branch
+        run: |
+          # Determine the default branch name
+          DEFAULT_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@' || echo "main")
+          
+          # Checkout the default branch (tags are in detached HEAD state)
+          git checkout "$DEFAULT_BRANCH"
+          git pull origin "$DEFAULT_BRANCH"
+      
       - name: Update Homebrew formula
         run: |
           TAG=${{ steps.get_version.outputs.tag }}
@@ -139,9 +170,8 @@ jobs:
           TAG=${{ steps.get_version.outputs.tag }}
           BRANCH_NAME="update-homebrew-formula-${TAG}"
           
-          # Checkout the main branch (tags are in detached HEAD state)
-          git checkout main || git checkout master
-          git pull
+          # Determine the default branch name again
+          DEFAULT_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@' || echo "main")
           
           # Check if there are changes
           if git diff --quiet Formula/swift-mock-generator.rb; then
@@ -160,4 +190,4 @@ jobs:
           git push -u origin "$BRANCH_NAME"
           
           echo "✅ Branch '$BRANCH_NAME' created and pushed successfully"
-          echo "You can now create a PR from this branch to main"
+          echo "You can now create a PR from this branch to $DEFAULT_BRANCH"
