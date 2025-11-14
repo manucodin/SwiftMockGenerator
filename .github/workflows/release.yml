@@ -50,23 +50,33 @@ jobs:
           PREVIOUS_TAG=${{ steps.previous_tag.outputs.previous_tag }}
           
           if [ -n "$PREVIOUS_TAG" ] && [ "$PREVIOUS_TAG" != "" ]; then
-            NOTES="## Changes in ${TAG}
-
-See the [full changelog](https://github.com/${{ github.repository }}/compare/${PREVIOUS_TAG}...${TAG}) for details."
+            NOTES=$(cat <<NOTES_EOF
+          ## Changes in ${TAG}
+          
+          See the [full changelog](https://github.com/${{ github.repository }}/compare/${PREVIOUS_TAG}...${TAG}) for details.
+          NOTES_EOF
+          )
           else
-            NOTES="## Changes in ${TAG}
-
-Initial release."
+            NOTES=$(cat <<NOTES_EOF
+          ## Changes in ${TAG}
+          
+          Initial release.
+          NOTES_EOF
+          )
           fi
           
-          NOTES="${NOTES}
-
-### Installation
-
-\`\`\`bash
-brew tap manucodin/swift-mock-generator
-brew install swift-mock-generator
-\`\`\`"
+          INSTALL_SECTION=$(cat <<INSTALL_EOF
+          
+          ### Installation
+          
+          \`\`\`bash
+          brew tap manucodin/swift-mock-generator
+          brew install swift-mock-generator
+          \`\`\`
+          INSTALL_EOF
+          )
+          
+          NOTES="${NOTES}${INSTALL_SECTION}"
           
           echo "notes<<EOF" >> $GITHUB_OUTPUT
           echo "$NOTES" >> $GITHUB_OUTPUT
