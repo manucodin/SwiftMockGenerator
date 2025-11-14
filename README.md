@@ -28,7 +28,7 @@ A powerful Swift CLI tool that automatically generates comprehensive mock object
 #### 🍺 Homebrew (Recommended)
 
 ```bash
-brew tap manucodin/swift-mock-generator
+brew tap manucodin/SwiftMockGenerator
 brew install swift-mock-generator
 ```
 
