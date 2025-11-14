@@ -145,8 +145,8 @@ jobs:
       - name: Checkout main branch
         run: |
           # Checkout the main branch (tags are in detached HEAD state)
-          git checkout main
-          git pull origin main
+          git checkout develop
+          git pull origin develop
       
       - name: Update Homebrew formula
         run: |
