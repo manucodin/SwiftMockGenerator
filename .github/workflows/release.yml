@@ -91,28 +91,6 @@ jobs:
           draft: false
           prerelease: false
       
-      - name: Mark release as latest
-        run: |
-          TAG=${{ steps.get_version.outputs.tag }}
-          REPO="${{ github.repository }}"
-          
-          # Get the release ID
-          RELEASE_ID=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            "https://api.github.com/repos/${REPO}/releases/tags/${TAG}" | \
-            grep -o '"id":[0-9]*' | head -1 | cut -d':' -f2)
-          
-          if [ -n "$RELEASE_ID" ]; then
-            # Mark as latest
-            curl -X PATCH \
-              -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-              -H "Accept: application/vnd.github.v3+json" \
-              "https://api.github.com/repos/${REPO}/releases/${RELEASE_ID}" \
-              -d '{"make_latest": true}'
-            echo "✅ Release marked as latest"
-          else
-            echo "⚠️ Could not find release ID for tag ${TAG}"
-          fi
-      
       - name: Wait for GitHub to generate tarball
         run: sleep 10
       
