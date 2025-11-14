@@ -11,12 +11,14 @@ jobs:
     runs-on: macos-14
     permissions:
       contents: write
+      pull-requests: write
     
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
       
       - name: Setup Swift
         uses: swift-actions/setup-swift@v1
@@ -133,19 +135,39 @@ jobs:
           sed -i '' "s/VERSION_PLACEHOLDER/${TAG}/g" "$FORMULA_FILE"
           sed -i '' "s/SHA256_PLACEHOLDER/${SHA256}/g" "$FORMULA_FILE"
       
-      - name: Commit and push changes
+      - name: Checkout main branch
         run: |
-          # Checkout the main branch (tags are in detached HEAD state)
           git checkout main || git checkout master
-          
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          
+          git pull
+      
+      - name: Check for changes
+        id: check_changes
+        run: |
           if git diff --quiet homebrew-tap/swift-mock-generator.rb; then
+            echo "has_changes=false" >> $GITHUB_OUTPUT
             echo "No changes to commit"
-            exit 0
+          else
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+            git add homebrew-tap/swift-mock-generator.rb
           fi
-          
-          git add homebrew-tap/swift-mock-generator.rb
-          git commit -m "Update Homebrew formula to ${{ steps.get_version.outputs.tag }}"
-          git push
+      
+      - name: Create Pull Request
+        if: steps.check_changes.outputs.has_changes == 'true'
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "Update Homebrew formula to ${{ steps.get_version.outputs.tag }}"
+          title: "Update Homebrew formula to ${{ steps.get_version.outputs.tag }}"
+          body: |
+            This PR automatically updates the Homebrew formula for release ${{ steps.get_version.outputs.tag }}.
+            
+            - **Version**: ${{ steps.get_version.outputs.tag }}
+            - **SHA256**: ${{ steps.sha256.outputs.sha256 }}
+            
+            This PR was created automatically by the release workflow.
+          branch: update-homebrew-formula-${{ steps.get_version.outputs.tag }}
+          delete-branch: true
+          labels: |
+            automated
+            homebrew
+          draft: false
