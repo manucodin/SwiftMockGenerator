@@ -120,43 +120,64 @@ jobs:
           
           echo "sha256=$SHA256" >> $GITHUB_OUTPUT
       
+      - name: Checkout Homebrew tap repository
+        uses: actions/checkout@v4
+        with:
+          repository: manucodin/homebrew-swift-mock-generator
+          path: homebrew-tap
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          fetch-depth: 0
+      
       - name: Update Homebrew formula
         run: |
           TAG=${{ steps.get_version.outputs.tag }}
           SHA256=${{ steps.sha256.outputs.sha256 }}
-          FORMULA_FILE="homebrew-tap/swift-mock-generator.rb"
           
-          if [ ! -f "$FORMULA_FILE" ]; then
-            echo "Error: Formula file not found at $FORMULA_FILE"
+          # Copy template from main repo to homebrew tap
+          TEMPLATE_FILE="Formula/swift-mock-generator.rb"
+          
+          if [ ! -f "$TEMPLATE_FILE" ]; then
+            echo "Error: Template file not found at $TEMPLATE_FILE"
             exit 1
           fi
           
+          # Determine where to place the formula in the tap repo
+          if [ -d "homebrew-tap/Formula" ]; then
+            FORMULA_FILE="homebrew-tap/Formula/swift-mock-generator.rb"
+          else
+            FORMULA_FILE="homebrew-tap/swift-mock-generator.rb"
+          fi
+          
+          # Copy template and update placeholders
+          cp "$TEMPLATE_FILE" "$FORMULA_FILE"
           sed -i '' "s/VERSION_PLACEHOLDER/${TAG}/g" "$FORMULA_FILE"
           sed -i '' "s/SHA256_PLACEHOLDER/${SHA256}/g" "$FORMULA_FILE"
+          
+          echo "✅ Updated formula: $FORMULA_FILE"
       
       - name: Create branch and push changes
         run: |
-          TAG=${{ steps.get_version.outputs.tag }}
-          BRANCH_NAME="update-homebrew-formula-${TAG}"
+          cd homebrew-tap
           
-          # Checkout the main branch (tags are in detached HEAD state)
-          git checkout main || git checkout master
-          git pull
+          TAG=${{ steps.get_version.outputs.tag }}
+          BRANCH_NAME="update-to-${TAG}"
+          
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Configure git to use the token for authentication
+          git remote set-url origin https://x-access-token:${{ secrets.HOMEBREW_TAP_TOKEN }}@github.com/manucodin/homebrew-swift-mock-generator.git
           
           # Check if there are changes
-          if git diff --quiet homebrew-tap/swift-mock-generator.rb; then
+          if git diff --quiet; then
             echo "No changes to commit"
             exit 0
           fi
           
           # Create branch, commit and push
           git checkout -b "$BRANCH_NAME"
-          
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          
-          git add homebrew-tap/swift-mock-generator.rb
-          git commit -m "Update Homebrew formula to ${TAG}"
+          git add .
+          git commit -m "Update swift-mock-generator to ${TAG}"
           git push -u origin "$BRANCH_NAME"
           
           echo "✅ Branch '$BRANCH_NAME' created and pushed successfully"
